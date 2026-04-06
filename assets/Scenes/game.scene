@@ -2388,6 +2388,7 @@
     "rows": 9,
     "cols": 9,
     "cellSize": 64,
+    "spacingOffset": 40,
     "_id": "bbiUQtZdBBHb71ZtIckNvQ"
   },
   {

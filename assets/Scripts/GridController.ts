@@ -12,17 +12,27 @@ export class GridController extends Component {
     @property(LightningEffect) lightning: LightningEffect = null!;
     @property(CCInteger) rows: number = 9;
     @property(CCInteger) cols: number = 9;
-    @property(CCFloat) cellSize: number = 55;
+    
+    @property({ type: CCFloat, tooltip: "The size of the dot visual" })
+    public cellSize: number = 55;
+
+    @property({ type: CCFloat, tooltip: "Extra padding between cells to control density" })
+    public spacingOffset: number = 20;
 
     private grid: (Node | null)[][] = [];
     private isProcessing: boolean = false;
     private _currentChain: Node[] = [];
     private _isDragging: boolean = false;
-    private _isLoopClosed: boolean = false; // Track if the shape is closed
+    private _isLoopClosed: boolean = false;
 
     private readonly colorMap: { [key: string]: string } = {
         "blue": "#7693C0", "yellow": "#FBC367", "purple": "#8F6B9B", "red": "#E35B5B", "green": "#79B496"
     };
+
+    // Helper to calculate total spacing used for both layout and touch detection
+    private get spacing(): number {
+        return this.cellSize + this.spacingOffset;
+    }
 
     onLoad() {
         this.node.on(Node.EventType.TOUCH_START, this.onDragStart, this);
@@ -55,27 +65,25 @@ export class GridController extends Component {
     private handleTouchStep(event: any) {
         const uiTransform = this.node.getComponent(UITransform)!;
         const localPos = uiTransform.convertToNodeSpaceAR(v3(event.getUILocation().x, event.getUILocation().y, 0));
-        const spacing = this.cellSize + 10;
         
-        const c = Math.round((localPos.x + ((this.cols - 1) * spacing / 2)) / spacing);
-        const r = Math.round((((this.rows - 1) * spacing / 2) - localPos.y) / spacing);
+        // Use the dynamic spacing for coordinate calculation
+        const s = this.spacing;
+        const c = Math.round((localPos.x + ((this.cols - 1) * s / 2)) / s);
+        const r = Math.round((((this.rows - 1) * s / 2) - localPos.y) / s);
 
         if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
             const node = this.grid[r][c];
             if (!node) return;
 
-            // Handle connecting back to the start to close the loop
             if (this._currentChain.length >= 3 && node === this._currentChain[0]) {
                 const lastNode = this._currentChain[this._currentChain.length - 1];
                 const piece = node.getComponent(GridPiece)!;
                 
                 this.lightning.drawLightning(lastNode.position, node.position, this.colorMap[piece.colorId]);
-                this._isLoopClosed = true; // Stop further dragging once closed
-                console.log("Shape loop closed!");
+                this._isLoopClosed = true; 
                 return;
             }
 
-            // Standard connection logic
             if (this._currentChain.indexOf(node) !== -1) return;
             
             const piece = node.getComponent(GridPiece)!;
@@ -95,7 +103,6 @@ export class GridController extends Component {
 
     private onDragEnd() {
         this._isDragging = false;
-        // Success check: Must be at least 3 dots, and for shapes, we usually want them closed
         if (this._currentChain.length >= 3 && GameManager.instance.goalManager.checkPathMatch(this._currentChain)) {
             this.handleSuccess();
         } else {
@@ -142,9 +149,9 @@ export class GridController extends Component {
     }
 
     private spawnBoard() {
-        const spacing = this.cellSize + 10;
-        const totalW = (this.cols - 1) * spacing;
-        const totalH = (this.rows - 1) * spacing;
+        const s = this.spacing;
+        const totalW = (this.cols - 1) * s;
+        const totalH = (this.rows - 1) * s;
 
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
@@ -154,7 +161,7 @@ export class GridController extends Component {
                 const piece = dot.getComponent(GridPiece)!;
                 piece.row = r; piece.col = c;
                 
-                const finalPos = v3((c * spacing) - (totalW / 2), (totalH / 2) - (r * spacing), 0);
+                const finalPos = v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
                 dot.setPosition(finalPos.x, finalPos.y + 600, 0);
                 this.grid[r][c] = dot;
 
