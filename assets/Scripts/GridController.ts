@@ -4,6 +4,7 @@ import { GameManager } from './GameManager';
 import { LightningEffect } from './LightningEffect';
 import { MatchFinder } from './MatchFinder';
 import { TutorialHand } from './TutorialHand'; 
+import { TutorialController } from './TutorialController';
 
 const { ccclass, property } = _decorator;
 
@@ -58,18 +59,19 @@ export class GridController extends Component {
         return v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
     }
 
-    private onDragStart(event: any) {
-        if (this.isProcessing || GameManager.instance.isGameOver) return;
-        
-        // Interrupt Tutorial if it is currently playing
-        const tc = this.getComponent('TutorialController') as any;
-        if (tc) tc.stopTutorial();
-
-        if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
-        this._isDragging = true;
-        this._isLoopClosed = false;
-        this.handleTouchStep(event);
+private onDragStart(event: any) {
+    if (this.isProcessing || GameManager.instance.isGameOver) return;
+    
+    // Find TutorialController on the same node or reference it
+    const tc = this.getComponent('TutorialController') as TutorialController;
+    if (tc) {
+        tc.stopTutorial(); // This resets the 3s timer and hides the hand/lines
     }
+
+    if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
+    this._isDragging = true;
+    this.handleTouchStep(event);
+}
 
     private onDragMove(event: any) {
         if (!this._isDragging || this.isProcessing || this._isLoopClosed) return;

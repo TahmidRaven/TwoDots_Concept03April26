@@ -3430,6 +3430,8 @@
     "grid": {
       "__id__": 62
     },
+    "drawSpeed": 0.125,
+    "idleThreshold": 3,
     "_id": "7bpf755QxEgb6ulAGjjSoM"
   },
   {
