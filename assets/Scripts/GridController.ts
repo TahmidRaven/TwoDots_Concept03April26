@@ -59,13 +59,17 @@ export class GridController extends Component {
         return v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
     }
 
+// Inside GridController.ts
 private onDragStart(event: any) {
     if (this.isProcessing || GameManager.instance.isGameOver) return;
     
-    // Find TutorialController on the same node or reference it
     const tc = this.getComponent('TutorialController') as TutorialController;
     if (tc) {
-        tc.stopTutorial(); // This resets the 3s timer and hides the hand/lines
+        // NEW: Check if we are allowed to interrupt
+        if (!tc.canPlayerInteract()) {
+            return; // Exit here; player cannot touch during the first stage tutorial
+        }
+        tc.stopTutorial(); 
     }
 
     if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();

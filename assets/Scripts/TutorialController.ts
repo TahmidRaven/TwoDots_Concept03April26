@@ -19,8 +19,20 @@ export class TutorialController extends Component {
     private _idleTimer: number = 0;
     private _isShowingTutorial: boolean = false;
     private _tutorialTween: Tween<Node> | null = null;
+    
+    // Tracks if the first tutorial of the current stage has been completed
+    private _hasCompletedFirstTutorialInStage: boolean = false;
+    private _lastCheckedStage: number = -1;
 
     update(dt: number) {
+        const currentStage = GameManager.instance.goalManager.currentStage;
+
+        // Reset the "First Tutorial" flag if the stage has changed
+        if (currentStage !== this._lastCheckedStage) {
+            this._hasCompletedFirstTutorialInStage = false;
+            this._lastCheckedStage = currentStage;
+        }
+
         // Don't count idle time if game is over or board is busy dropping dots
         if (GameManager.instance.isGameOver || this.grid.isProcessing) {
             this._idleTimer = 0;
@@ -34,7 +46,18 @@ export class TutorialController extends Component {
         }
     }
 
-public playFullSuggestion() {
+    /**
+     * Checks if the player is allowed to interact with the grid right now
+     */
+    public canPlayerInteract(): boolean {
+        // If it's the first tutorial of the stage and it's currently playing, block touch
+        if (this._isShowingTutorial && !this._hasCompletedFirstTutorialInStage) {
+            return false;
+        }
+        return true;
+    }
+
+    public playFullSuggestion() {
         const gm = GameManager.instance.goalManager;
         const path: Vec2[] = gm.getPathForCurrentStage();
         if (path.length < 2) return;
@@ -55,18 +78,16 @@ public playFullSuggestion() {
             this.addTweenSegment(path[i-1], path[i], colorHex);
         }
 
-        // 2. NEW: Add a final segment to close the loop back to the start
-        const lastPoint = path[path.length - 1];
-        const firstPoint = path[0];
-        this.addTweenSegment(lastPoint, firstPoint, colorHex);
+        // 2. Close the loop back to the start
+        this.addTweenSegment(path[path.length - 1], path[0], colorHex);
 
         // Keep the finished drawing visible for 1.5s then hide
-        this._tutorialTween.delay(1.5).call(() => this.stopTutorial()).start();
+        this._tutorialTween.delay(1.5).call(() => {
+            this._hasCompletedFirstTutorialInStage = true; // Mark stage intro as done
+            this.stopTutorial();
+        }).start();
     }
 
-    /**
-     * Helper to add a movement segment to the tutorial tween
-     */
     private addTweenSegment(startCoord: Vec2, endCoord: Vec2, colorHex: string) {
         const prevPos = this.grid.getPosOfCell(startCoord.x, startCoord.y);
         const targetPos = this.grid.getPosOfCell(endCoord.x, endCoord.y);
@@ -89,11 +110,8 @@ public playFullSuggestion() {
         });
     }
 
-    /**
-     * Call this to instantly kill the tutorial and reset the idle timer
-     */
     public stopTutorial() {
-        this._idleTimer = 0; // Reset 3s clock
+        this._idleTimer = 0; 
         this._isShowingTutorial = false;
         
         if (this._tutorialTween) {
@@ -103,13 +121,7 @@ public playFullSuggestion() {
 
         this.hand.hide();
         if (this.grid.lightning) {
-            this.lightningWorkaround();
+            this.grid.lightning.clearWeb();
         }
-    }
-
-    private lightningWorkaround() {
-        // Clear current lightning so it doesn't stay on screen when player starts
-        
-        this.grid.lightning.clearWeb();
     }
 }
