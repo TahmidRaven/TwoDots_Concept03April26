@@ -10,16 +10,12 @@ export class TutorialController extends Component {
     @property(TutorialHand) hand: TutorialHand = null!;
     @property(GridController) grid: GridController = null!;
     
-    @property({ type: CCFloat, tooltip: "Seconds to move between each dot" })
-    public drawSpeed: number = 0.4;
-
-    @property({ type: CCFloat, tooltip: "Idle time before tutorial triggers" })
-    public idleThreshold: number = 3.0;
+    @property(CCFloat) public drawSpeed: number = 0.4;
+    @property(CCFloat) public idleThreshold: number = 3.0;
 
     private _idleTimer: number = 0;
     private _isShowingTutorial: boolean = false;
     private _tutorialTween: Tween<Node> | null = null;
-    
     private _hasCompletedFirstTutorialInStage: boolean = false;
     private _lastCheckedStage: number = -1;
 
@@ -31,10 +27,9 @@ export class TutorialController extends Component {
             this._lastCheckedStage = currentStage;
         }
 
-        // RESET timer if board is falling, player is dragging, or game is over
+        // Logic check: if player is dragging, reset the idle timer
         if (GameManager.instance.isGameOver || this.grid.isProcessing || this.grid.isDragging) {
             this._idleTimer = 0;
-            // Stop active tutorial if the board starts processing (e.g., refreshBoard triggered)
             if (this._isShowingTutorial) this.stopTutorial();
             return;
         }
@@ -46,18 +41,19 @@ export class TutorialController extends Component {
         }
     }
 
-    public resetIdleTimer() {
-        this._idleTimer = 0;
-        if (this._isShowingTutorial && this._hasCompletedFirstTutorialInStage) {
-            this.stopTutorial();
+    public stopTutorial() {
+        this._idleTimer = 0; 
+        this._isShowingTutorial = false;
+        if (this._tutorialTween) {
+            this._tutorialTween.stop();
+            this._tutorialTween = null;
         }
+        this.hand.hide();
+        if (this.grid.lightning) this.grid.lightning.clearWeb();
     }
 
     public canPlayerInteract(): boolean {
-        if (this._isShowingTutorial && !this._hasCompletedFirstTutorialInStage) {
-            return false;
-        }
-        return true;
+        return !(this._isShowingTutorial && !this._hasCompletedFirstTutorialInStage);
     }
 
     public playFullSuggestion() {
@@ -70,7 +66,6 @@ export class TutorialController extends Component {
         const colorHex = (this.grid as any).colorMap[goalColor] || "#FFFFFF";
 
         const startPos = this.grid.getPosOfCell(path[0].x, path[0].y);
-        this.hand.node.setPosition(startPos);
         this.hand.showAt(startPos);
 
         this._tutorialTween = tween(this.node);
@@ -98,31 +93,15 @@ export class TutorialController extends Component {
                 this.hand.node.setPosition(currentPos);
                 
                 if (this.grid.lightning) {
-                    this.grid.lightning.drawLightning(prevPos, currentPos, colorHex);
+                    this.grid.lightning.setPreviewBolt(prevPos, currentPos, colorHex);
                 }
             },
             onComplete: () => {
                 if (this.grid.lightning) {
-                    this.grid.lightning.drawLightning(prevPos, targetPos, colorHex);
+                    this.grid.lightning.addBolt(prevPos, targetPos, colorHex);
+                    this.grid.lightning.clearPreview();
                 }
             }
         });
-    }
-
-    public stopTutorial() {
-        this._idleTimer = 0; 
-        this._isShowingTutorial = false;
-        
-        if (this._tutorialTween) {
-            this._tutorialTween.stop();
-            this._tutorialTween = null;
-        }
-
-        this.hand.hide();
-        
-        // Ensure lightning is cleared immediately when tutorial stops
-        if (this.grid.lightning) {
-            this.grid.lightning.clearWeb();
-        }
     }
 }

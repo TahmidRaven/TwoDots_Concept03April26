@@ -3,7 +3,6 @@ import { GridPiece } from './GridPiece';
 import { GameManager } from './GameManager';
 import { LightningEffect } from './LightningEffect';
 import { MatchFinder } from './MatchFinder';
-import { TutorialHand } from './TutorialHand'; 
 import { TutorialController } from './TutorialController';
 
 const { ccclass, property } = _decorator;
@@ -12,15 +11,11 @@ const { ccclass, property } = _decorator;
 export class GridController extends Component {
     @property([Prefab]) dotPrefabs: Prefab[] = [];
     @property(LightningEffect) lightning: LightningEffect = null!;
-    @property(TutorialHand) tutorialHand: TutorialHand = null!; 
     @property(CCInteger) rows: number = 9;
     @property(CCInteger) cols: number = 9;
-    
     @property(CCFloat) cellSize: number = 55;
     @property(CCFloat) spacingOffset: number = 20;
-
-    @property(Node) 
-    public gridContainer: Node = null!;
+    @property(Node) gridContainer: Node = null!;
 
     private grid: (Node | null)[][] = [];
     public isProcessing: boolean = false; 
@@ -28,15 +23,14 @@ export class GridController extends Component {
     private _isDragging: boolean = false;
     private _isLoopClosed: boolean = false;
 
+    // FIX: Added the missing getter for TutorialController
     public get isDragging(): boolean { return this._isDragging; }
 
     public readonly colorMap: { [key: string]: string } = {
         "blue": "#7693C0", "yellow": "#FBC367", "purple": "#8F6B9B", "red": "#E35B5B", "green": "#79B496"
     };
 
-    private get spacing(): number {
-        return this.cellSize + this.spacingOffset;
-    }
+    private get spacing(): number { return this.cellSize + this.spacingOffset; }
 
     onLoad() {
         this.node.on(Node.EventType.TOUCH_START, this.onDragStart, this);
@@ -55,20 +49,13 @@ export class GridController extends Component {
 
     public getPosOfCell(r: number, c: number): Vec3 {
         const s = this.spacing;
-        const totalW = (this.cols - 1) * s;
-        const totalH = (this.rows - 1) * s;
-        return v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
+        return v3((c * s) - ((this.cols - 1) * s / 2), ((this.rows - 1) * s / 2) - (r * s), 0);
     }
 
     private onDragStart(event: any) {
         if (this.isProcessing || GameManager.instance.isGameOver) return;
-        
-        const tc = this.getComponent('TutorialController') as TutorialController;
-        if (tc) {
-            // STOP tutorial and clear lightning immediately on touch
-            tc.stopTutorial(); 
-            if (!tc.canPlayerInteract()) return;
-        }
+        const tc = this.getComponent(TutorialController);
+        if (tc) tc.stopTutorial(); 
 
         if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
         this._isDragging = true;
@@ -77,46 +64,50 @@ export class GridController extends Component {
 
     private onDragMove(event: any) {
         if (!this._isDragging || this.isProcessing || this._isLoopClosed) return;
-
-        const tc = this.getComponent('TutorialController') as TutorialController;
-        if (tc) {
-            tc.resetIdleTimer();
-        }
-
         this.handleTouchStep(event);
     }
 
     private handleTouchStep(event: any) {
         const uiTransform = this.node.getComponent(UITransform)!;
-        const localPos = uiTransform.convertToNodeSpaceAR(v3(event.getUILocation().x, event.getUILocation().y, 0));
+        const touchPos = uiTransform.convertToNodeSpaceAR(v3(event.getUILocation().x, event.getUILocation().y, 0));
         
         const s = this.spacing;
-        const c = Math.round((localPos.x + ((this.cols - 1) * s / 2)) / s);
-        const r = Math.round((((this.rows - 1) * s / 2) - localPos.y) / s);
+        const c = Math.round((touchPos.x + ((this.cols - 1) * s / 2)) / s);
+        const r = Math.round((((this.rows - 1) * s / 2) - touchPos.y) / s);
+
+        // Visual preview stretching to the finger
+        if (this._currentChain.length > 0 && !this._isLoopClosed) {
+            const lastNode = this._currentChain[this._currentChain.length - 1];
+            const colorId = lastNode.getComponent(GridPiece)!.colorId;
+            this.lightning.setPreviewBolt(lastNode.position, touchPos, this.colorMap[colorId]);
+        }
 
         if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
             const node = this.grid[r][c];
             if (!node) return;
 
+            const piece = node.getComponent(GridPiece)!;
+
+            // Loop Detection
             if (this._currentChain.length >= 3 && node === this._currentChain[0]) {
                 const lastNode = this._currentChain[this._currentChain.length - 1];
-                const piece = node.getComponent(GridPiece)!;
-                this.lightning.drawLightning(lastNode.position, node.position, this.colorMap[piece.colorId]);
+                this.lightning.addBolt(lastNode.position, node.position, this.colorMap[piece.colorId]);
+                this.lightning.clearPreview();
                 this._isLoopClosed = true; 
                 return;
             }
 
-            if (this._currentChain.indexOf(node) !== -1) return;
-            const piece = node.getComponent(GridPiece)!;
-            
-            if (this._currentChain.length === 0) {
-                this._currentChain.push(node);
-            } else {
-                const lastPiece = this._currentChain[this._currentChain.length - 1].getComponent(GridPiece)!;
-                if (MatchFinder.isSameColor(lastPiece, piece)) {
-                    const prevPos = this._currentChain[this._currentChain.length - 1].position;
+            // Connection logic
+            if (this._currentChain.indexOf(node) === -1) {
+                if (this._currentChain.length === 0) {
                     this._currentChain.push(node);
-                    this.lightning.drawLightning(prevPos, node.position, this.colorMap[piece.colorId]);
+                } else {
+                    const lastPiece = this._currentChain[this._currentChain.length - 1].getComponent(GridPiece)!;
+                    if (MatchFinder.isSameColor(lastPiece, piece)) {
+                        const lastPos = this._currentChain[this._currentChain.length - 1].position;
+                        this.lightning.addBolt(lastPos, node.position, this.colorMap[piece.colorId]);
+                        this._currentChain.push(node);
+                    }
                 }
             }
         }
@@ -124,7 +115,11 @@ export class GridController extends Component {
 
     private onDragEnd() {
         this._isDragging = false;
-        if (this._currentChain.length >= 3 && GameManager.instance.goalManager.checkPathMatch(this._currentChain)) {
+        this.lightning.clearPreview();
+        
+        // Success check: Must be a loop and match the goal shape
+        if (this._currentChain.length >= 3 && this._isLoopClosed && 
+            GameManager.instance.goalManager.checkPathMatch(this._currentChain, true)) {
             this.handleSuccess();
         } else {
             this.clearChain();
@@ -134,11 +129,9 @@ export class GridController extends Component {
     private handleSuccess() {
         this.isProcessing = true;
         GameManager.instance.goalManager.revealCurrentDrawing();
-        
         this._currentChain.forEach(node => {
             tween(node).to(0.2, { scale: v3(0, 0, 0) }).call(() => node.destroy()).start();
         });
-
         GameManager.instance.decrementMoves();
         
         this.scheduleOnce(() => {
@@ -170,31 +163,21 @@ export class GridController extends Component {
     }
 
     private spawnBoard() {
-        this.isProcessing = true; // Mark as processing immediately
+        this.isProcessing = true;
         const s = this.spacing;
-        const totalW = (this.cols - 1) * s;
-        const totalH = (this.rows - 1) * s;
-
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const dot = instantiate(this.getPrefabForCell(r, c));
                 dot.parent = this.gridContainer || this.node; 
-                
                 const piece = dot.getComponent(GridPiece)!;
                 piece.row = r; piece.col = c;
-                
-                const finalPos = v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
+                const finalPos = this.getPosOfCell(r, c);
                 dot.setPosition(finalPos.x, finalPos.y + 600, 0);
                 this.grid[r][c] = dot;
-
                 tween(dot).to(0.6, { position: finalPos }, { easing: 'bounceOut' }).start();
             }
         }
-        
-        // Wait for all balls to settle (0.6s animation + 0.2s buffer)
-        this.scheduleOnce(() => {
-            this.isProcessing = false;
-        }, 0.8);
+        this.scheduleOnce(() => { this.isProcessing = false; }, 0.8);
     }
 
     private getPrefabForCell(r: number, c: number): Prefab {
@@ -202,11 +185,9 @@ export class GridController extends Component {
         const targetPath = gm.getPathForCurrentStage();
         const goalColor = gm.getRequiredColor();
         const isShapePart = targetPath.some(p => p.x === r && p.y === c);
-
         if (isShapePart) {
             return this.dotPrefabs.find(p => p.data.getComponent(GridPiece)!.colorId === goalColor) || this.dotPrefabs[0];
         }
-
         const noisePool = this.dotPrefabs.filter(p => p.data.getComponent(GridPiece)!.colorId !== goalColor);
         return noisePool[Math.floor(Math.random() * noisePool.length)];
     }
