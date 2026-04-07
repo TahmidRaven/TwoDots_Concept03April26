@@ -45,7 +45,7 @@ export class LightningEffect extends Component {
     }
 
     private drawLayers(bolt: { start: Vec3, end: Vec3, colorHex: string }) {
-        this.renderLine(bolt.start, bolt.end, bolt.colorHex, this.baseLineWidth * 1.5, 100);
+        // this.renderLine(bolt.start, bolt.end, bolt.colorHex, this.baseLineWidth * 1.5, 100);
         this.renderLine(bolt.start, bolt.end, bolt.colorHex, this.baseLineWidth, 255);
     }
 
