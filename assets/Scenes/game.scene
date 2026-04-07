@@ -2425,6 +2425,9 @@
     "timeLabel": {
       "__id__": 38
     },
+    "progressBar": {
+      "__id__": 31
+    },
     "victoryScreen": {
       "__id__": 125
     },

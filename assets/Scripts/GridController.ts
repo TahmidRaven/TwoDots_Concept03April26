@@ -94,6 +94,9 @@ export class GridController extends Component {
                 this.lightning.clearPreview();
                 this._isLoopClosed = true; 
                 GameManager.instance.playNextRipple(); 
+                
+                // Set progress to 1 when loop is closed
+                GameManager.instance.setProgress(1.0);
                 return;
             }
 
@@ -108,6 +111,11 @@ export class GridController extends Component {
                         this.lightning.addBolt(lastPos, node.position, this.colorMap[piece.colorId]);
                         this._currentChain.push(node);
                         GameManager.instance.playNextRipple(); 
+                        
+                        // Update Progress Bar based on target path length
+                        const targetLength = GameManager.instance.goalManager.getPathForCurrentStage().length;
+                        const progress = Math.min(this._currentChain.length / targetLength, 0.95);
+                        GameManager.instance.setProgress(progress);
                     }
                 }
             }
@@ -119,17 +127,15 @@ export class GridController extends Component {
         this._isDragging = false;
         this.lightning.clearPreview();
         
-        // Every release counts as a move
         GameManager.instance.decrementMoves();
 
         if (this._isLoopClosed && GameManager.instance.goalManager.checkPathMatch(this._currentChain, true)) {
             this.handleSuccess();
         } else {
-            // Play Wrong SFX if user drew something but it wasn't valid
             if (this._currentChain.length > 0) {
                 GameManager.instance.playWrongSfx();
             }
-            this.clearChain();
+            this.clearChain(); // This will reset ProgressBar to 0
         }
     }
 
@@ -171,6 +177,9 @@ export class GridController extends Component {
         this._currentChain = [];
         this._isLoopClosed = false;
         if (this.lightning) this.lightning.clearWeb();
+        
+        // Reset Progress Bar to 0 on failure or clear
+        GameManager.instance.setProgress(0);
     }
 
     private spawnBoard() {

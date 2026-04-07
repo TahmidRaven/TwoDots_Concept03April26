@@ -1,4 +1,4 @@
-import { _decorator, Component, Label, CCInteger } from 'cc';
+import { _decorator, Component, Label, CCInteger, ProgressBar } from 'cc';
 import { GridController } from './GridController';
 import { VictoryScreen } from './VictoryScreen';
 import { GoalManager } from './GoalManager';
@@ -15,6 +15,7 @@ export class GameManager extends Component {
     @property(GoalManager) goalManager: GoalManager = null!;
     @property(Label) movesLabel: Label = null!;
     @property(Label) timeLabel: Label = null!; 
+    @property(ProgressBar) progressBar: ProgressBar = null!; // Node: ProgressBarColor
     @property(VictoryScreen) victoryScreen: VictoryScreen = null!;
     
     @property(CCInteger) maxMoves: number = 15;
@@ -42,6 +43,7 @@ export class GameManager extends Component {
         GameManager.instance = this; 
         this._moves = this.maxMoves;
         this._timeLeft = this.startTimeSeconds;
+        if (this.progressBar) this.progressBar.progress = 0;
     }
 
     start() {
@@ -56,7 +58,7 @@ export class GameManager extends Component {
             this._timeLeft -= dt;
             if (this._timeLeft <= 0) {
                 this._timeLeft = 0;
-                this.endGame(false); // Trigger Fail when time runs out
+                this.endGame(false); 
             }
             this.updateTimerUI();
         }
@@ -86,11 +88,15 @@ export class GameManager extends Component {
         if (this.destroySfx) this.destroySfx.play();
     }
 
+    public setProgress(value: number) {
+        if (this.progressBar) this.progressBar.progress = value;
+    }
+
     public decrementMoves() {
         if (this._isGameOver) return;
         this._moves--;
         this.updateUI();
-        if (this._moves <= 0) this.endGame(false); // Trigger Fail when moves run out
+        if (this._moves <= 0) this.endGame(false); 
     }
 
     private updateUI() {
