@@ -20,21 +20,19 @@ export class TutorialController extends Component {
     private _isShowingTutorial: boolean = false;
     private _tutorialTween: Tween<Node> | null = null;
     
-    // Tracks if the first tutorial of the current stage has been completed
     private _hasCompletedFirstTutorialInStage: boolean = false;
     private _lastCheckedStage: number = -1;
 
     update(dt: number) {
         const currentStage = GameManager.instance.goalManager.currentStage;
 
-        // Reset the "First Tutorial" flag if the stage has changed
         if (currentStage !== this._lastCheckedStage) {
             this._hasCompletedFirstTutorialInStage = false;
             this._lastCheckedStage = currentStage;
         }
 
-        // Don't count idle time if game is over or board is busy dropping dots
-        if (GameManager.instance.isGameOver || this.grid.isProcessing) {
+        // NEW: If the grid is processing (dots falling) or player is dragging, reset the timer
+        if (GameManager.instance.isGameOver || this.grid.isProcessing || this.grid.isDragging) {
             this._idleTimer = 0;
             return;
         }
@@ -47,10 +45,17 @@ export class TutorialController extends Component {
     }
 
     /**
-     * Checks if the player is allowed to interact with the grid right now
+     * Resets the idle timer. Called by GridController on touch move.
      */
+    public resetIdleTimer() {
+        this._idleTimer = 0;
+        // If a suggestion is currently showing (and it's not the forced first one), stop it
+        if (this._isShowingTutorial && this._hasCompletedFirstTutorialInStage) {
+            this.stopTutorial();
+        }
+    }
+
     public canPlayerInteract(): boolean {
-        // If it's the first tutorial of the stage and it's currently playing, block touch
         if (this._isShowingTutorial && !this._hasCompletedFirstTutorialInStage) {
             return false;
         }
@@ -66,24 +71,20 @@ export class TutorialController extends Component {
         const goalColor = gm.getRequiredColor();
         const colorHex = (this.grid as any).colorMap[goalColor] || "#FFFFFF";
 
-        // Start at first position
         const startPos = this.grid.getPosOfCell(path[0].x, path[0].y);
         this.hand.node.setPosition(startPos);
         this.hand.showAt(startPos);
 
         this._tutorialTween = tween(this.node);
         
-        // 1. Loop through the path provided by GoalManager
         for (let i = 1; i < path.length; i++) {
             this.addTweenSegment(path[i-1], path[i], colorHex);
         }
 
-        // 2. Close the loop back to the start
         this.addTweenSegment(path[path.length - 1], path[0], colorHex);
 
-        // Keep the finished drawing visible for 1.5s then hide
         this._tutorialTween.delay(1.5).call(() => {
-            this._hasCompletedFirstTutorialInStage = true; // Mark stage intro as done
+            this._hasCompletedFirstTutorialInStage = true; 
             this.stopTutorial();
         }).start();
     }

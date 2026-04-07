@@ -28,7 +28,9 @@ export class GridController extends Component {
     private _isDragging: boolean = false;
     private _isLoopClosed: boolean = false;
 
-    // Made public so TutorialController can access it
+    // Added getter for the TutorialController to check state
+    public get isDragging(): boolean { return this._isDragging; }
+
     public readonly colorMap: { [key: string]: string } = {
         "blue": "#7693C0", "yellow": "#FBC367", "purple": "#8F6B9B", "red": "#E35B5B", "green": "#79B496"
     };
@@ -52,9 +54,6 @@ export class GridController extends Component {
         this.spawnBoard();
     }
 
-    /**
-     * Converts grid coordinates to local Node position
-     */
     public getPosOfCell(r: number, c: number): Vec3 {
         const s = this.spacing;
         const totalW = (this.cols - 1) * s;
@@ -62,26 +61,29 @@ export class GridController extends Component {
         return v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
     }
 
-// Inside GridController.ts
-private onDragStart(event: any) {
-    if (this.isProcessing || GameManager.instance.isGameOver) return;
-    
-    const tc = this.getComponent('TutorialController') as TutorialController;
-    if (tc) {
-        // NEW: Check if we are allowed to interrupt
-        if (!tc.canPlayerInteract()) {
-            return; // Exit here; player cannot touch during the first stage tutorial
+    private onDragStart(event: any) {
+        if (this.isProcessing || GameManager.instance.isGameOver) return;
+        
+        const tc = this.getComponent('TutorialController') as TutorialController;
+        if (tc) {
+            if (!tc.canPlayerInteract()) return;
+            tc.stopTutorial(); 
         }
-        tc.stopTutorial(); 
-    }
 
-    if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
-    this._isDragging = true;
-    this.handleTouchStep(event);
-}
+        if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
+        this._isDragging = true;
+        this.handleTouchStep(event);
+    }
 
     private onDragMove(event: any) {
         if (!this._isDragging || this.isProcessing || this._isLoopClosed) return;
+
+        // NEW: Reset the idle timer while the player is moving their finger
+        const tc = this.getComponent('TutorialController') as TutorialController;
+        if (tc) {
+            tc.resetIdleTimer();
+        }
+
         this.handleTouchStep(event);
     }
 
@@ -168,31 +170,28 @@ private onDragStart(event: any) {
         if (this.lightning) this.lightning.clearWeb();
     }
 
-private spawnBoard() {
-    const s = this.spacing;
-    const totalW = (this.cols - 1) * s;
-    const totalH = (this.rows - 1) * s;
+    private spawnBoard() {
+        const s = this.spacing;
+        const totalW = (this.cols - 1) * s;
+        const totalH = (this.rows - 1) * s;
 
-    for (let r = 0; r < this.rows; r++) {
-        for (let c = 0; c < this.cols; c++) {
-            const dot = instantiate(this.getPrefabForCell(r, c));
-            
-            // CHANGE THIS LINE:
-            // Use gridContainer if assigned, otherwise fallback to the controller node
-            dot.parent = this.gridContainer || this.node; 
-            
-            const piece = dot.getComponent(GridPiece)!;
-            piece.row = r; piece.col = c;
-            
-            const finalPos = v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
-            dot.setPosition(finalPos.x, finalPos.y + 600, 0);
-            this.grid[r][c] = dot;
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const dot = instantiate(this.getPrefabForCell(r, c));
+                dot.parent = this.gridContainer || this.node; 
+                
+                const piece = dot.getComponent(GridPiece)!;
+                piece.row = r; piece.col = c;
+                
+                const finalPos = v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
+                dot.setPosition(finalPos.x, finalPos.y + 600, 0);
+                this.grid[r][c] = dot;
 
-            tween(dot).to(0.6, { position: finalPos }, { easing: 'bounceOut' }).start();
+                tween(dot).to(0.6, { position: finalPos }, { easing: 'bounceOut' }).start();
+            }
         }
+        this.scheduleOnce(() => this.isProcessing = false, 0.7);
     }
-    this.scheduleOnce(() => this.isProcessing = false, 0.7);
-}
 
     private getPrefabForCell(r: number, c: number): Prefab {
         const gm = GameManager.instance.goalManager;
