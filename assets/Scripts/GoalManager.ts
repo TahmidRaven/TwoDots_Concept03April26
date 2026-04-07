@@ -8,7 +8,6 @@ export class GoalManager extends Component {
     @property(ProgressBar) progressBar: ProgressBar = null!;
     @property(Label) progressLabel: Label = null!;
 
-    // Adjusted order to match your requested stage flow
     private readonly stageColors: string[] = ["blue", "green", "yellow"];
     private _currentStage: number = 0;
 
@@ -30,19 +29,38 @@ export class GoalManager extends Component {
 
     public checkPathMatch(playerChain: Node[], isLoopClosed: boolean): boolean {
         if (!isLoopClosed) return false;
+
         const targetPath = this.getPathForCurrentStage();
         const requiredColor = this.getRequiredColor();
-        
-        let shapeMatches = 0;
-        playerChain.forEach(node => {
+
+        // 1. Check if the player chain contains ONLY the required color
+        const validColor = playerChain.every(node => {
             const piece = node.getComponent(GridPiece);
-            if (piece && piece.colorId === requiredColor) {
-                if (targetPath.some(t => t.x === piece.row && t.y === piece.col)) {
-                    shapeMatches++;
-                }
-            }
+            return piece && piece.colorId === requiredColor;
         });
-        return shapeMatches >= 5; 
+        if (!validColor) return false;
+
+        // 2. Check if every dot in the target shape was touched
+        // We use a "Set" style check to ensure all coordinates in targetPath exist in playerChain
+        const allPointsMatched = targetPath.every(targetPos => {
+            return playerChain.some(node => {
+                const piece = node.getComponent(GridPiece);
+                return piece && piece.row === targetPos.x && piece.col === targetPos.y;
+            });
+        });
+
+        // 3. Double check that the player didn't select extra dots outside the shape
+        const noExtraPoints = playerChain.every(node => {
+            const piece = node.getComponent(GridPiece);
+            return piece && targetPath.some(targetPos => targetPos.x === piece.row && targetPos.y === piece.col);
+        });
+
+        if (!allPointsMatched || !noExtraPoints) {
+            console.warn(`[GoalManager] Shape mismatch. Required: ${targetPath.length}, Player: ${playerChain.length}`);
+            return false;
+        }
+
+        return true; 
     }
 
     public revealCurrentDrawing() {

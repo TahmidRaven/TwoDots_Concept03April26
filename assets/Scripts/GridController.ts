@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat, isValid } from 'cc';
 import { GridPiece } from './GridPiece';
 import { GameManager } from './GameManager';
 import { LightningEffect } from './LightningEffect';
@@ -23,7 +23,6 @@ export class GridController extends Component {
     private _isDragging: boolean = false;
     private _isLoopClosed: boolean = false;
 
-    // FIX: Added the missing getter for TutorialController
     public get isDragging(): boolean { return this._isDragging; }
 
     public readonly colorMap: { [key: string]: string } = {
@@ -75,7 +74,6 @@ export class GridController extends Component {
         const c = Math.round((touchPos.x + ((this.cols - 1) * s / 2)) / s);
         const r = Math.round((((this.rows - 1) * s / 2) - touchPos.y) / s);
 
-        // Visual preview stretching to the finger
         if (this._currentChain.length > 0 && !this._isLoopClosed) {
             const lastNode = this._currentChain[this._currentChain.length - 1];
             const colorId = lastNode.getComponent(GridPiece)!.colorId;
@@ -84,11 +82,10 @@ export class GridController extends Component {
 
         if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
             const node = this.grid[r][c];
-            if (!node) return;
+            if (!node || !isValid(node)) return;
 
             const piece = node.getComponent(GridPiece)!;
 
-            // Loop Detection
             if (this._currentChain.length >= 3 && node === this._currentChain[0]) {
                 const lastNode = this._currentChain[this._currentChain.length - 1];
                 this.lightning.addBolt(lastNode.position, node.position, this.colorMap[piece.colorId]);
@@ -97,7 +94,6 @@ export class GridController extends Component {
                 return;
             }
 
-            // Connection logic
             if (this._currentChain.indexOf(node) === -1) {
                 if (this._currentChain.length === 0) {
                     this._currentChain.push(node);
@@ -117,9 +113,7 @@ export class GridController extends Component {
         this._isDragging = false;
         this.lightning.clearPreview();
         
-        // Success check: Must be a loop and match the goal shape
-        if (this._currentChain.length >= 3 && this._isLoopClosed && 
-            GameManager.instance.goalManager.checkPathMatch(this._currentChain, true)) {
+        if (this._isLoopClosed && GameManager.instance.goalManager.checkPathMatch(this._currentChain, true)) {
             this.handleSuccess();
         } else {
             this.clearChain();
@@ -129,9 +123,15 @@ export class GridController extends Component {
     private handleSuccess() {
         this.isProcessing = true;
         GameManager.instance.goalManager.revealCurrentDrawing();
-        this._currentChain.forEach(node => {
-            tween(node).to(0.2, { scale: v3(0, 0, 0) }).call(() => node.destroy()).start();
+        
+        // Use a Set to avoid trying to destroy the same node twice (e.g., the loop start/end)
+        const uniqueNodes = Array.from(new Set(this._currentChain));
+        uniqueNodes.forEach(node => {
+            if (isValid(node)) {
+                tween(node).to(0.2, { scale: v3(0, 0, 0) }).call(() => node.destroy()).start();
+            }
         });
+        
         GameManager.instance.decrementMoves();
         
         this.scheduleOnce(() => {
@@ -146,7 +146,7 @@ export class GridController extends Component {
     private refreshBoard() {
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
-                if (this.grid[r][c]) {
+                if (this.grid[r][c] && isValid(this.grid[r][c])) {
                     this.grid[r][c]!.destroy();
                     this.grid[r][c] = null;
                 }
@@ -164,7 +164,6 @@ export class GridController extends Component {
 
     private spawnBoard() {
         this.isProcessing = true;
-        const s = this.spacing;
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const dot = instantiate(this.getPrefabForCell(r, c));

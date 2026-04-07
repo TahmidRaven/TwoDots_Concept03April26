@@ -8,7 +8,9 @@ const { ccclass, property } = _decorator;
 @ccclass('TutorialController')
 export class TutorialController extends Component {
     @property(TutorialHand) hand: TutorialHand = null!;
-    @property(GridController) grid: GridController = null!;
+    
+    // Use an arrow function to delay the type evaluation and break the circular loop
+    @property({ type: GridController }) grid: GridController = null!;
     
     @property(CCFloat) public drawSpeed: number = 0.4;
     @property(CCFloat) public idleThreshold: number = 3.0;
@@ -20,6 +22,9 @@ export class TutorialController extends Component {
     private _lastCheckedStage: number = -1;
 
     update(dt: number) {
+        // Ensure GameManager instance is ready
+        if (!GameManager.instance || !GameManager.instance.goalManager) return;
+
         const currentStage = GameManager.instance.goalManager.currentStage;
 
         if (currentStage !== this._lastCheckedStage) {
@@ -28,7 +33,7 @@ export class TutorialController extends Component {
         }
 
         // Logic check: if player is dragging, reset the idle timer
-        if (GameManager.instance.isGameOver || this.grid.isProcessing || this.grid.isDragging) {
+        if (GameManager.instance.isGameOver || (this.grid && (this.grid.isProcessing || this.grid.isDragging))) {
             this._idleTimer = 0;
             if (this._isShowingTutorial) this.stopTutorial();
             return;
@@ -48,8 +53,8 @@ export class TutorialController extends Component {
             this._tutorialTween.stop();
             this._tutorialTween = null;
         }
-        this.hand.hide();
-        if (this.grid.lightning) this.grid.lightning.clearWeb();
+        if (this.hand) this.hand.hide();
+        if (this.grid && this.grid.lightning) this.grid.lightning.clearWeb();
     }
 
     public canPlayerInteract(): boolean {
