@@ -28,7 +28,6 @@ export class GridController extends Component {
     private _isDragging: boolean = false;
     private _isLoopClosed: boolean = false;
 
-    // Added getter for the TutorialController to check state
     public get isDragging(): boolean { return this._isDragging; }
 
     public readonly colorMap: { [key: string]: string } = {
@@ -66,8 +65,9 @@ export class GridController extends Component {
         
         const tc = this.getComponent('TutorialController') as TutorialController;
         if (tc) {
-            if (!tc.canPlayerInteract()) return;
+            // STOP tutorial and clear lightning immediately on touch
             tc.stopTutorial(); 
+            if (!tc.canPlayerInteract()) return;
         }
 
         if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
@@ -78,7 +78,6 @@ export class GridController extends Component {
     private onDragMove(event: any) {
         if (!this._isDragging || this.isProcessing || this._isLoopClosed) return;
 
-        // NEW: Reset the idle timer while the player is moving their finger
         const tc = this.getComponent('TutorialController') as TutorialController;
         if (tc) {
             tc.resetIdleTimer();
@@ -171,6 +170,7 @@ export class GridController extends Component {
     }
 
     private spawnBoard() {
+        this.isProcessing = true; // Mark as processing immediately
         const s = this.spacing;
         const totalW = (this.cols - 1) * s;
         const totalH = (this.rows - 1) * s;
@@ -190,7 +190,11 @@ export class GridController extends Component {
                 tween(dot).to(0.6, { position: finalPos }, { easing: 'bounceOut' }).start();
             }
         }
-        this.scheduleOnce(() => this.isProcessing = false, 0.7);
+        
+        // Wait for all balls to settle (0.6s animation + 0.2s buffer)
+        this.scheduleOnce(() => {
+            this.isProcessing = false;
+        }, 0.8);
     }
 
     private getPrefabForCell(r: number, c: number): Prefab {

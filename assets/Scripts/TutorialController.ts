@@ -31,9 +31,11 @@ export class TutorialController extends Component {
             this._lastCheckedStage = currentStage;
         }
 
-        // NEW: If the grid is processing (dots falling) or player is dragging, reset the timer
+        // RESET timer if board is falling, player is dragging, or game is over
         if (GameManager.instance.isGameOver || this.grid.isProcessing || this.grid.isDragging) {
             this._idleTimer = 0;
+            // Stop active tutorial if the board starts processing (e.g., refreshBoard triggered)
+            if (this._isShowingTutorial) this.stopTutorial();
             return;
         }
 
@@ -44,12 +46,8 @@ export class TutorialController extends Component {
         }
     }
 
-    /**
-     * Resets the idle timer. Called by GridController on touch move.
-     */
     public resetIdleTimer() {
         this._idleTimer = 0;
-        // If a suggestion is currently showing (and it's not the forced first one), stop it
         if (this._isShowingTutorial && this._hasCompletedFirstTutorialInStage) {
             this.stopTutorial();
         }
@@ -121,6 +119,8 @@ export class TutorialController extends Component {
         }
 
         this.hand.hide();
+        
+        // Ensure lightning is cleared immediately when tutorial stops
         if (this.grid.lightning) {
             this.grid.lightning.clearWeb();
         }
