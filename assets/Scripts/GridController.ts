@@ -58,7 +58,6 @@ export class GridController extends Component {
 
         if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
         
-        // Reset sound sequence for a new drag
         GameManager.instance.resetRippleIndex(); 
         this._isDragging = true;
         this.handleTouchStep(event);
@@ -89,31 +88,25 @@ export class GridController extends Component {
 
             const piece = node.getComponent(GridPiece)!;
 
-            // Handle loop closure
             if (this._currentChain.length >= 3 && node === this._currentChain[0]) {
                 const lastNode = this._currentChain[this._currentChain.length - 1];
                 this.lightning.addBolt(lastNode.position, node.position, this.colorMap[piece.colorId]);
                 this.lightning.clearPreview();
                 this._isLoopClosed = true; 
-                
-                // Sound for closing the loop
                 GameManager.instance.playNextRipple(); 
                 return;
             }
 
-            // Handle adding new dots to chain
             if (this._currentChain.indexOf(node) === -1) {
                 if (this._currentChain.length === 0) {
                     this._currentChain.push(node);
-                    GameManager.instance.playNextRipple(); // Sound for first selection
+                    GameManager.instance.playNextRipple(); 
                 } else {
                     const lastPiece = this._currentChain[this._currentChain.length - 1].getComponent(GridPiece)!;
                     if (MatchFinder.isSameColor(lastPiece, piece)) {
                         const lastPos = this._currentChain[this._currentChain.length - 1].position;
                         this.lightning.addBolt(lastPos, node.position, this.colorMap[piece.colorId]);
                         this._currentChain.push(node);
-                        
-                        // Progressive ripple sound
                         GameManager.instance.playNextRipple(); 
                     }
                 }
@@ -122,12 +115,20 @@ export class GridController extends Component {
     }
 
     private onDragEnd() {
+        if (!this._isDragging) return;
         this._isDragging = false;
         this.lightning.clearPreview();
         
+        // Every release counts as a move
+        GameManager.instance.decrementMoves();
+
         if (this._isLoopClosed && GameManager.instance.goalManager.checkPathMatch(this._currentChain, true)) {
             this.handleSuccess();
         } else {
+            // Play Wrong SFX if user drew something but it wasn't valid
+            if (this._currentChain.length > 0) {
+                GameManager.instance.playWrongSfx();
+            }
             this.clearChain();
         }
     }
@@ -135,8 +136,6 @@ export class GridController extends Component {
     private handleSuccess() {
         this.isProcessing = true;
         GameManager.instance.goalManager.revealCurrentDrawing();
-        
-        // Play success/destroy sound
         GameManager.instance.playDestroySfx(); 
         
         const uniqueNodes = Array.from(new Set(this._currentChain));
@@ -145,8 +144,6 @@ export class GridController extends Component {
                 tween(node).to(0.2, { scale: v3(0, 0, 0) }).call(() => node.destroy()).start();
             }
         });
-        
-        GameManager.instance.decrementMoves();
         
         this.scheduleOnce(() => {
             if (GameManager.instance.goalManager.currentStage >= 3) {

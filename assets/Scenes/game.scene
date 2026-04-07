@@ -1457,7 +1457,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 73.03997802734375,
+      "width": 72.99998474121094,
       "height": 50.4
     },
     "_anchorPoint": {
@@ -1487,7 +1487,7 @@
       "b": 1,
       "a": 255
     },
-    "_string": "30s",
+    "_string": "50s",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 40,
@@ -2422,10 +2422,14 @@
     "movesLabel": {
       "__id__": 44
     },
+    "timeLabel": {
+      "__id__": 38
+    },
     "victoryScreen": {
       "__id__": 125
     },
     "maxMoves": 15,
+    "startTimeSeconds": 50,
     "bgm": {
       "__id__": 144
     },
@@ -2437,6 +2441,9 @@
     },
     "destroySfx": {
       "__id__": 159
+    },
+    "wrongSfx": {
+      "__id__": 269
     },
     "wooshSfx": {
       "__id__": 164
