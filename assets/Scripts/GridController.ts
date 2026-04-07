@@ -57,6 +57,9 @@ export class GridController extends Component {
         if (tc) tc.stopTutorial(); 
 
         if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
+        
+        // Reset sound sequence for a new drag
+        GameManager.instance.resetRippleIndex(); 
         this._isDragging = true;
         this.handleTouchStep(event);
     }
@@ -86,23 +89,32 @@ export class GridController extends Component {
 
             const piece = node.getComponent(GridPiece)!;
 
+            // Handle loop closure
             if (this._currentChain.length >= 3 && node === this._currentChain[0]) {
                 const lastNode = this._currentChain[this._currentChain.length - 1];
                 this.lightning.addBolt(lastNode.position, node.position, this.colorMap[piece.colorId]);
                 this.lightning.clearPreview();
                 this._isLoopClosed = true; 
+                
+                // Sound for closing the loop
+                GameManager.instance.playNextRipple(); 
                 return;
             }
 
+            // Handle adding new dots to chain
             if (this._currentChain.indexOf(node) === -1) {
                 if (this._currentChain.length === 0) {
                     this._currentChain.push(node);
+                    GameManager.instance.playNextRipple(); // Sound for first selection
                 } else {
                     const lastPiece = this._currentChain[this._currentChain.length - 1].getComponent(GridPiece)!;
                     if (MatchFinder.isSameColor(lastPiece, piece)) {
                         const lastPos = this._currentChain[this._currentChain.length - 1].position;
                         this.lightning.addBolt(lastPos, node.position, this.colorMap[piece.colorId]);
                         this._currentChain.push(node);
+                        
+                        // Progressive ripple sound
+                        GameManager.instance.playNextRipple(); 
                     }
                 }
             }
@@ -124,7 +136,9 @@ export class GridController extends Component {
         this.isProcessing = true;
         GameManager.instance.goalManager.revealCurrentDrawing();
         
-        // Use a Set to avoid trying to destroy the same node twice (e.g., the loop start/end)
+        // Play success/destroy sound
+        GameManager.instance.playDestroySfx(); 
+        
         const uniqueNodes = Array.from(new Set(this._currentChain));
         uniqueNodes.forEach(node => {
             if (isValid(node)) {
