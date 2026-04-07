@@ -19,6 +19,9 @@ export class GridController extends Component {
     @property(CCFloat) cellSize: number = 55;
     @property(CCFloat) spacingOffset: number = 20;
 
+    @property(Node) 
+    public gridContainer: Node = null!;
+
     private grid: (Node | null)[][] = [];
     public isProcessing: boolean = false; 
     private _currentChain: Node[] = [];
@@ -165,27 +168,31 @@ private onDragStart(event: any) {
         if (this.lightning) this.lightning.clearWeb();
     }
 
-    private spawnBoard() {
-        const s = this.spacing;
-        const totalW = (this.cols - 1) * s;
-        const totalH = (this.rows - 1) * s;
+private spawnBoard() {
+    const s = this.spacing;
+    const totalW = (this.cols - 1) * s;
+    const totalH = (this.rows - 1) * s;
 
-        for (let r = 0; r < this.rows; r++) {
-            for (let c = 0; c < this.cols; c++) {
-                const dot = instantiate(this.getPrefabForCell(r, c));
-                dot.parent = this.node;
-                const piece = dot.getComponent(GridPiece)!;
-                piece.row = r; piece.col = c;
-                
-                const finalPos = v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
-                dot.setPosition(finalPos.x, finalPos.y + 600, 0);
-                this.grid[r][c] = dot;
+    for (let r = 0; r < this.rows; r++) {
+        for (let c = 0; c < this.cols; c++) {
+            const dot = instantiate(this.getPrefabForCell(r, c));
+            
+            // CHANGE THIS LINE:
+            // Use gridContainer if assigned, otherwise fallback to the controller node
+            dot.parent = this.gridContainer || this.node; 
+            
+            const piece = dot.getComponent(GridPiece)!;
+            piece.row = r; piece.col = c;
+            
+            const finalPos = v3((c * s) - (totalW / 2), (totalH / 2) - (r * s), 0);
+            dot.setPosition(finalPos.x, finalPos.y + 600, 0);
+            this.grid[r][c] = dot;
 
-                tween(dot).to(0.6, { position: finalPos }, { easing: 'bounceOut' }).start();
-            }
+            tween(dot).to(0.6, { position: finalPos }, { easing: 'bounceOut' }).start();
         }
-        this.scheduleOnce(() => this.isProcessing = false, 0.7);
     }
+    this.scheduleOnce(() => this.isProcessing = false, 0.7);
+}
 
     private getPrefabForCell(r: number, c: number): Prefab {
         const gm = GameManager.instance.goalManager;
