@@ -1,4 +1,4 @@
-import { _decorator, Component, Label, CCInteger, ProgressBar } from 'cc';
+import { _decorator, Component, Label, CCInteger, ProgressBar, Node, Vec3, v3, tween, UIOpacity } from 'cc';
 import { GridController } from './GridController';
 import { VictoryScreen } from './VictoryScreen';
 import { GoalManager } from './GoalManager';
@@ -16,9 +16,11 @@ export class GameManager extends Component {
     @property(GoalManager) goalManager: GoalManager = null!;
     @property(Label) movesLabel: Label = null!;
     @property(Label) timeLabel: Label = null!; 
-    @property(ProgressBar) progressBar: ProgressBar = null!; // Node: ProgressBarColor
+    @property(ProgressBar) progressBar: ProgressBar = null!;
     @property(TypewriterEffect) typewriter: TypewriterEffect = null!;
     @property(VictoryScreen) victoryScreen: VictoryScreen = null!;
+
+    @property(Node) warningNode: Node = null!;
     
     @property(CCInteger) maxMoves: number = 15;
     @property(CCInteger) startTimeSeconds: number = 59; 
@@ -37,6 +39,7 @@ export class GameManager extends Component {
     private _isGameOver: boolean = false;
     private _gameStarted: boolean = false;
     private _rippleIndex: number = 0; 
+    private _isWarningActive: boolean = false;
 
     public get isGameOver() { return this._isGameOver; }
     public get hasGameStarted() { return this._gameStarted; }
@@ -45,6 +48,15 @@ export class GameManager extends Component {
         GameManager.instance = this; 
         this._moves = this.maxMoves;
         this._timeLeft = this.startTimeSeconds;
+        this._isWarningActive = false;
+
+        if (this.warningNode) {
+            this.warningNode.active = false;
+            const opacity = this.warningNode.getComponent(UIOpacity);
+            if (opacity) opacity.opacity = 255;
+            this.warningNode.setScale(v3(1, 1, 1));
+        }
+
         if (this.progressBar) this.progressBar.progress = 0;
     }
 
@@ -62,6 +74,12 @@ export class GameManager extends Component {
     update(dt: number) {
         if (this._gameStarted && !this._isGameOver) {
             this._timeLeft -= dt;
+
+            // Trigger warning if time is 10s or less
+            if (this._timeLeft <= 10) {
+                this.triggerWarning();
+            }
+
             if (this._timeLeft <= 0) {
                 this._timeLeft = 0;
                 this.endGame(false); 
@@ -73,6 +91,32 @@ export class GameManager extends Component {
     public startGame() {
         if (this._gameStarted) return;
         this._gameStarted = true;
+    }
+
+    private triggerWarning() {
+        if (this._isWarningActive || !this.warningNode) return;
+        this._isWarningActive = true;
+        this.warningNode.active = true;
+
+        const opacityComp = this.warningNode.getComponent(UIOpacity);
+
+        // Pulse Scale
+        tween(this.warningNode)
+            .to(0.6, { scale: v3(1.15, 1.15, 1) }, { easing: 'sineInOut' })
+            .to(0.6, { scale: v3(1, 1, 1) }, { easing: 'sineInOut' })
+            .union()
+            .repeatForever()
+            .start();
+
+        // Pulse Opacity if component exists
+        if (opacityComp) {
+            tween(opacityComp)
+                .to(0.6, { opacity: 120 }, { easing: 'sineInOut' })
+                .to(0.6, { opacity: 255 }, { easing: 'sineInOut' })
+                .union()
+                .repeatForever()
+                .start();
+        }
     }
 
     public resetRippleIndex() {
@@ -102,6 +146,12 @@ export class GameManager extends Component {
         if (this._isGameOver) return;
         this._moves--;
         this.updateUI();
+
+        // Trigger warning if moves are 5 or less
+        if (this._moves <= 5) {
+            this.triggerWarning();
+        }
+
         if (this._moves <= 0) this.endGame(false); 
     }
 
@@ -119,6 +169,14 @@ export class GameManager extends Component {
         if (this._isGameOver) return;
         this._isGameOver = true;
         
+        // Stop the warning pulse on game end
+        if (this.warningNode) {
+            tween(this.warningNode).stop();
+            const opacity = this.warningNode.getComponent(UIOpacity);
+            if (opacity) tween(opacity).stop();
+            this.warningNode.active = false;
+        }
+
         if (win && this.winSfx) this.winSfx.play();
         else if (!win && this.failSfx) this.failSfx.play();
 
