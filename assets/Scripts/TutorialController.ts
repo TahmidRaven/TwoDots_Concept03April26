@@ -8,10 +8,7 @@ const { ccclass, property } = _decorator;
 @ccclass('TutorialController')
 export class TutorialController extends Component {
     @property(TutorialHand) hand: TutorialHand = null!;
-    
-    // Use an arrow function to delay the type evaluation and break the circular loop
     @property({ type: GridController }) grid: GridController = null!;
-    
     @property(CCFloat) public drawSpeed: number = 0.4;
     @property(CCFloat) public idleThreshold: number = 3.0;
 
@@ -22,9 +19,7 @@ export class TutorialController extends Component {
     private _lastCheckedStage: number = -1;
 
     update(dt: number) {
-        // Ensure GameManager instance is ready
         if (!GameManager.instance || !GameManager.instance.goalManager) return;
-
         const currentStage = GameManager.instance.goalManager.currentStage;
 
         if (currentStage !== this._lastCheckedStage) {
@@ -32,7 +27,6 @@ export class TutorialController extends Component {
             this._lastCheckedStage = currentStage;
         }
 
-        // Logic check: if player is dragging, reset the idle timer
         if (GameManager.instance.isGameOver || (this.grid && (this.grid.isProcessing || this.grid.isDragging))) {
             this._idleTimer = 0;
             if (this._isShowingTutorial) this.stopTutorial();
@@ -40,7 +34,6 @@ export class TutorialController extends Component {
         }
 
         this._idleTimer += dt;
-
         if (this._idleTimer >= this.idleThreshold && !this._isShowingTutorial) {
             this.playFullSuggestion();
         }
@@ -57,14 +50,13 @@ export class TutorialController extends Component {
         if (this.grid && this.grid.lightning) this.grid.lightning.clearWeb();
     }
 
-    public canPlayerInteract(): boolean {
-        return !(this._isShowingTutorial && !this._hasCompletedFirstTutorialInStage);
-    }
-
     public playFullSuggestion() {
         const gm = GameManager.instance.goalManager;
         const path: Vec2[] = gm.getPathForCurrentStage();
         if (path.length < 2) return;
+
+        // Flash outline briefly
+        gm.flashOutline(1.0); 
 
         this._isShowingTutorial = true;
         const goalColor = gm.getRequiredColor();
@@ -74,11 +66,9 @@ export class TutorialController extends Component {
         this.hand.showAt(startPos);
 
         this._tutorialTween = tween(this.node);
-        
         for (let i = 1; i < path.length; i++) {
             this.addTweenSegment(path[i-1], path[i], colorHex);
         }
-
         this.addTweenSegment(path[path.length - 1], path[0], colorHex);
 
         this._tutorialTween.delay(1.5).call(() => {
@@ -96,7 +86,6 @@ export class TutorialController extends Component {
                 const currentPos = v3();
                 Vec3.lerp(currentPos, prevPos, targetPos, ratio);
                 this.hand.node.setPosition(currentPos);
-                
                 if (this.grid.lightning) {
                     this.grid.lightning.setPreviewBolt(prevPos, currentPos, colorHex);
                 }

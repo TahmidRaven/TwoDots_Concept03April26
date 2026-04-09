@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat, isValid, Sprite, Color } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat, isValid, Sprite, Color, Animation } from 'cc';
 import { GridPiece } from './GridPiece';
 import { GameManager } from './GameManager';
 import { LightningEffect } from './LightningEffect';
@@ -11,9 +11,8 @@ const { ccclass, property } = _decorator;
 @ccclass('GridController')
 export class GridController extends Component {
     @property([Prefab]) dotPrefabs: Prefab[] = [];
-    
-    @property(Prefab) 
-    whiteDotPrefab: Prefab = null!; // The pulse effect prefab
+    @property(Prefab) whiteDotPrefab: Prefab = null!; 
+    @property(Prefab) charBurstPrefab: Prefab = null!; 
 
     @property(LightningEffect) lightning: LightningEffect = null!;
     @property(CCInteger) rows: number = 9;
@@ -23,7 +22,6 @@ export class GridController extends Component {
     @property(Node) gridContainer: Node = null!;
     @property(TypewriterEffect) typewriter: TypewriterEffect = null!;
 
-
     private grid: (Node | null)[][] = [];
     public isProcessing: boolean = false; 
     private _currentChain: Node[] = [];
@@ -31,11 +29,9 @@ export class GridController extends Component {
     private _isLoopClosed: boolean = false;
 
     public get isDragging(): boolean { return this._isDragging; }
-
     public readonly colorMap: { [key: string]: string } = {
         "blue": "#7693C0", "yellow": "#FBC367", "purple": "#8F6B9B", "red": "#E35B5B", "green": "#79B496"
     };
-
     private get spacing(): number { return this.cellSize + this.spacingOffset; }
 
     onLoad() {
@@ -62,9 +58,7 @@ export class GridController extends Component {
         if (this.isProcessing || GameManager.instance.isGameOver) return;
         const tc = this.getComponent(TutorialController);
         if (tc) tc.stopTutorial(); 
-
         if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
-        
         GameManager.instance.resetRippleIndex(); 
         this._isDragging = true;
         this.handleTouchStep(event);
@@ -78,7 +72,6 @@ export class GridController extends Component {
     private handleTouchStep(event: any) {
         const uiTransform = this.node.getComponent(UITransform)!;
         const touchPos = uiTransform.convertToNodeSpaceAR(v3(event.getUILocation().x, event.getUILocation().y, 0));
-        
         const s = this.spacing;
         const c = Math.round((touchPos.x + ((this.cols - 1) * s / 2)) / s);
         const r = Math.round((((this.rows - 1) * s / 2) - touchPos.y) / s);
@@ -92,7 +85,6 @@ export class GridController extends Component {
         if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
             const node = this.grid[r][c];
             if (!node || !isValid(node)) return;
-
             const piece = node.getComponent(GridPiece)!;
 
             if (this._currentChain.length >= 3 && node === this._currentChain[0]) {
@@ -100,8 +92,6 @@ export class GridController extends Component {
                 this.lightning.addBolt(lastNode.position, node.position, this.colorMap[piece.colorId]);
                 this.lightning.clearPreview();
                 this._isLoopClosed = true; 
-                
-                // Use piece color for loop closure pulse
                 this.spawnWhiteDotEffect(node, piece.colorId); 
                 GameManager.instance.playNextRipple(); 
                 GameManager.instance.setProgress(1.0);
@@ -118,12 +108,9 @@ export class GridController extends Component {
                     if (MatchFinder.isSameColor(lastPiece, piece)) {
                         const lastPos = this._currentChain[this._currentChain.length - 1].position;
                         this.lightning.addBolt(lastPos, node.position, this.colorMap[piece.colorId]);
-                        
                         this._currentChain.push(node);
                         this.spawnWhiteDotEffect(node, piece.colorId); 
-                        
                         GameManager.instance.playNextRipple(); 
-                        
                         const targetLength = GameManager.instance.goalManager.getPathForCurrentStage().length;
                         const progress = Math.min(this._currentChain.length / targetLength, 0.95);
                         GameManager.instance.setProgress(progress);
@@ -133,73 +120,51 @@ export class GridController extends Component {
         }
     }
 
-    /**
-     * Spawns the transparent pulse effect with a color matching the prefab
-     */
     private spawnWhiteDotEffect(targetNode: Node, colorId: string) {
         if (!this.whiteDotPrefab) return;
-
         const effect = instantiate(this.whiteDotPrefab);
         effect.parent = this.gridContainer || this.node;
         effect.setPosition(targetNode.position);
-        
-        // 1. APPLY CORRESPONDING COLOR
         const sprite = effect.getComponent(Sprite) || effect.getComponentInChildren(Sprite);
         if (sprite) {
             const hex = this.colorMap[colorId] || "#FFFFFF";
             sprite.color = new Color().fromHEX(hex);
         }
-
-        // 2. ANIMATION
-        effect.setSiblingIndex(0); // Render behind the dots
+        effect.setSiblingIndex(0); 
         effect.setScale(v3(0.5, 0.5, 1));
-        
-        tween(effect)
-            .to(0.4, { scale: v3(1.8, 1.8, 1) }, { easing: 'sineOut' })
-            .start();
-
-        this.scheduleOnce(() => {
-            if (isValid(effect)) effect.destroy();
-        }, 0.5);
+        tween(effect).to(0.4, { scale: v3(1.8, 1.8, 1) }, { easing: 'sineOut' }).start();
+        this.scheduleOnce(() => { if (isValid(effect)) effect.destroy(); }, 0.5);
     }
 
     private onDragEnd() {
         if (!this._isDragging) return;
         this._isDragging = false;
         this.lightning.clearPreview();
-        
         GameManager.instance.decrementMoves();
 
         if (this._isLoopClosed && GameManager.instance.goalManager.checkPathMatch(this._currentChain, true)) {
             this.handleSuccess();
         } else {
-            if (this._currentChain.length > 0) {
-                GameManager.instance.playWrongSfx();
-            }
+            if (this._currentChain.length > 0) GameManager.instance.playWrongSfx();
             this.clearChain(); 
         }
     }
 
-private handleSuccess() {
+    private handleSuccess() {
         this.isProcessing = true;
-        
-        // Reference to goalManager for easier access
         const goalMgr = GameManager.instance.goalManager;
         
-        // 1. Reveal drawing for current stage
         goalMgr.revealCurrentDrawing();
         GameManager.instance.playDestroySfx(); 
 
-        // 2. Logic for Typewriter messages
         if (this.typewriter) {
-            if (goalMgr.currentStage < 3) {
+            if (goalMgr.currentStage < 2) {
                 this.typewriter.play("Great! Now draw the next shape.");
             } else {
                 this.typewriter.play("Play more to reveal shapes");
             }
         }
         
-        // 3. Destroy matched nodes
         const uniqueNodes = Array.from(new Set(this._currentChain));
         uniqueNodes.forEach(node => {
             if (isValid(node)) {
@@ -207,15 +172,32 @@ private handleSuccess() {
             }
         });
         
-        // 4. Check for Game End or Refresh
         this.scheduleOnce(() => {
-            if (goalMgr.currentStage >= 3) {
-                // All 3 shapes (Cat, Home, Star) are done
-                GameManager.instance.endGame(true);
-            } else {
-                this.refreshBoard();
+            // Trigger Burst Prefab with explicit play
+            if (this.charBurstPrefab) {
+                const burst = instantiate(this.charBurstPrefab);
+                burst.parent = goalMgr.node.parent; // Parent to UI level
+                burst.setPosition(goalMgr.filledSprite.node.position);
+                
+                const anim = burst.getComponent(Animation);
+                if (anim) anim.play(); 
+
+                this.scheduleOnce(() => { if (isValid(burst)) burst.destroy(); }, 1.5);
             }
-        }, 0.5);
+
+            tween(goalMgr.filledSprite.node)
+                .to(0.3, { scale: v3(0, 0, 0) }, { easing: 'backIn' })
+                .call(() => {
+                    goalMgr.nextStage();
+                    if (goalMgr.currentStage >= 3) {
+                        GameManager.instance.endGame(true);
+                    } else {
+                        goalMgr.updateStageVisuals();
+                        this.refreshBoard();
+                    }
+                })
+                .start();
+        }, 1.5); 
     }
 
     private refreshBoard() {
