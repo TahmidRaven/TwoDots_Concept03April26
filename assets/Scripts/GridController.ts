@@ -4,6 +4,7 @@ import { GameManager } from './GameManager';
 import { LightningEffect } from './LightningEffect';
 import { MatchFinder } from './MatchFinder';
 import { TutorialController } from './TutorialController';
+import { TypewriterEffect } from './TypewriterEffect';
 
 const { ccclass, property } = _decorator;
 
@@ -20,6 +21,8 @@ export class GridController extends Component {
     @property(CCFloat) cellSize: number = 55;
     @property(CCFloat) spacingOffset: number = 20;
     @property(Node) gridContainer: Node = null!;
+    @property(TypewriterEffect) typewriter: TypewriterEffect = null!;
+
 
     private grid: (Node | null)[][] = [];
     public isProcessing: boolean = false; 
@@ -181,6 +184,8 @@ export class GridController extends Component {
         this.isProcessing = true;
         GameManager.instance.goalManager.revealCurrentDrawing();
         GameManager.instance.playDestroySfx(); 
+
+        this.typewriter.play("Great! Now draw the next shape.");
         
         const uniqueNodes = Array.from(new Set(this._currentChain));
         uniqueNodes.forEach(node => {

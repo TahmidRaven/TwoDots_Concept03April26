@@ -4,6 +4,7 @@ import { VictoryScreen } from './VictoryScreen';
 import { GoalManager } from './GoalManager';
 import { AdManager } from '../ScriptsReusable/AdManager';
 import { AudioContent } from './AudioContent'; 
+import { TypewriterEffect } from './TypewriterEffect';
 
 const { ccclass, property } = _decorator;
 
@@ -16,6 +17,7 @@ export class GameManager extends Component {
     @property(Label) movesLabel: Label = null!;
     @property(Label) timeLabel: Label = null!; 
     @property(ProgressBar) progressBar: ProgressBar = null!; // Node: ProgressBarColor
+    @property(TypewriterEffect) typewriter: TypewriterEffect = null!;
     @property(VictoryScreen) victoryScreen: VictoryScreen = null!;
     
     @property(CCInteger) maxMoves: number = 15;
@@ -50,6 +52,10 @@ export class GameManager extends Component {
         this.updateUI();
         if (this.gridController) this.gridController.initGrid();
         if (this.bgm) this.bgm.play();
+
+        if (this.typewriter) {
+            this.typewriter.play("Connect Dots To Reveal The Drawing!");
+        }
         AdManager.gameReady();
     }
 

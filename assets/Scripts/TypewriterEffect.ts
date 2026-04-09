@@ -7,13 +7,17 @@ export class TypewriterEffect extends Component {
     public targetLabel: Label = null!;
 
     @property
-    public typingSpeed: number = 0.05; // Seconds per character
+    public typingSpeed: number = 0.05; 
 
     private _fullText: string = "";
     private _currentIndex: number = 0;
 
+    // This MUST be called by another script to start
     public play(text: string) {
-        if (!this.targetLabel) return;
+        if (!this.targetLabel) {
+            console.error("TypewriterEffect: No Label assigned!");
+            return;
+        }
         
         this._fullText = text;
         this._currentIndex = 0;

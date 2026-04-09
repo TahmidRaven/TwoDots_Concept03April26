@@ -2477,6 +2477,9 @@
     "progressBar": {
       "__id__": 33
     },
+    "typewriter": {
+      "__id__": 52
+    },
     "victoryScreen": {
       "__id__": 127
     },
@@ -2609,6 +2612,9 @@
     "spacingOffset": 40,
     "gridContainer": {
       "__id__": 114
+    },
+    "typewriter": {
+      "__id__": 52
     },
     "_id": "bbiUQtZdBBHb71ZtIckNvQ"
   },
