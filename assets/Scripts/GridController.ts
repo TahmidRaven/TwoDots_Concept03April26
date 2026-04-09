@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat, isValid } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat, isValid, Sprite, Color } from 'cc';
 import { GridPiece } from './GridPiece';
 import { GameManager } from './GameManager';
 import { LightningEffect } from './LightningEffect';
@@ -10,6 +10,10 @@ const { ccclass, property } = _decorator;
 @ccclass('GridController')
 export class GridController extends Component {
     @property([Prefab]) dotPrefabs: Prefab[] = [];
+    
+    @property(Prefab) 
+    whiteDotPrefab: Prefab = null!; // The pulse effect prefab
+
     @property(LightningEffect) lightning: LightningEffect = null!;
     @property(CCInteger) rows: number = 9;
     @property(CCInteger) cols: number = 9;
@@ -93,9 +97,10 @@ export class GridController extends Component {
                 this.lightning.addBolt(lastNode.position, node.position, this.colorMap[piece.colorId]);
                 this.lightning.clearPreview();
                 this._isLoopClosed = true; 
-                GameManager.instance.playNextRipple(); 
                 
-                // Set progress to 1 when loop is closed
+                // Use piece color for loop closure pulse
+                this.spawnWhiteDotEffect(node, piece.colorId); 
+                GameManager.instance.playNextRipple(); 
                 GameManager.instance.setProgress(1.0);
                 return;
             }
@@ -103,16 +108,19 @@ export class GridController extends Component {
             if (this._currentChain.indexOf(node) === -1) {
                 if (this._currentChain.length === 0) {
                     this._currentChain.push(node);
+                    this.spawnWhiteDotEffect(node, piece.colorId); 
                     GameManager.instance.playNextRipple(); 
                 } else {
                     const lastPiece = this._currentChain[this._currentChain.length - 1].getComponent(GridPiece)!;
                     if (MatchFinder.isSameColor(lastPiece, piece)) {
                         const lastPos = this._currentChain[this._currentChain.length - 1].position;
                         this.lightning.addBolt(lastPos, node.position, this.colorMap[piece.colorId]);
+                        
                         this._currentChain.push(node);
+                        this.spawnWhiteDotEffect(node, piece.colorId); 
+                        
                         GameManager.instance.playNextRipple(); 
                         
-                        // Update Progress Bar based on target path length
                         const targetLength = GameManager.instance.goalManager.getPathForCurrentStage().length;
                         const progress = Math.min(this._currentChain.length / targetLength, 0.95);
                         GameManager.instance.setProgress(progress);
@@ -120,6 +128,36 @@ export class GridController extends Component {
                 }
             }
         }
+    }
+
+    /**
+     * Spawns the transparent pulse effect with a color matching the prefab
+     */
+    private spawnWhiteDotEffect(targetNode: Node, colorId: string) {
+        if (!this.whiteDotPrefab) return;
+
+        const effect = instantiate(this.whiteDotPrefab);
+        effect.parent = this.gridContainer || this.node;
+        effect.setPosition(targetNode.position);
+        
+        // 1. APPLY CORRESPONDING COLOR
+        const sprite = effect.getComponent(Sprite) || effect.getComponentInChildren(Sprite);
+        if (sprite) {
+            const hex = this.colorMap[colorId] || "#FFFFFF";
+            sprite.color = new Color().fromHEX(hex);
+        }
+
+        // 2. ANIMATION
+        effect.setSiblingIndex(0); // Render behind the dots
+        effect.setScale(v3(0.5, 0.5, 1));
+        
+        tween(effect)
+            .to(0.4, { scale: v3(1.8, 1.8, 1) }, { easing: 'sineOut' })
+            .start();
+
+        this.scheduleOnce(() => {
+            if (isValid(effect)) effect.destroy();
+        }, 0.5);
     }
 
     private onDragEnd() {
@@ -135,7 +173,7 @@ export class GridController extends Component {
             if (this._currentChain.length > 0) {
                 GameManager.instance.playWrongSfx();
             }
-            this.clearChain(); // This will reset ProgressBar to 0
+            this.clearChain(); 
         }
     }
 
@@ -177,8 +215,6 @@ export class GridController extends Component {
         this._currentChain = [];
         this._isLoopClosed = false;
         if (this.lightning) this.lightning.clearWeb();
-        
-        // Reset Progress Bar to 0 on failure or clear
         GameManager.instance.setProgress(0);
     }
 
