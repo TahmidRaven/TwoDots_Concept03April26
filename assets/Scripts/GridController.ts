@@ -180,13 +180,26 @@ export class GridController extends Component {
         }
     }
 
-    private handleSuccess() {
+private handleSuccess() {
         this.isProcessing = true;
-        GameManager.instance.goalManager.revealCurrentDrawing();
+        
+        // Reference to goalManager for easier access
+        const goalMgr = GameManager.instance.goalManager;
+        
+        // 1. Reveal drawing for current stage
+        goalMgr.revealCurrentDrawing();
         GameManager.instance.playDestroySfx(); 
 
-        this.typewriter.play("Great! Now draw the next shape.");
+        // 2. Logic for Typewriter messages
+        if (this.typewriter) {
+            if (goalMgr.currentStage < 3) {
+                this.typewriter.play("Great! Now draw the next shape.");
+            } else {
+                this.typewriter.play("Play more to reveal shapes");
+            }
+        }
         
+        // 3. Destroy matched nodes
         const uniqueNodes = Array.from(new Set(this._currentChain));
         uniqueNodes.forEach(node => {
             if (isValid(node)) {
@@ -194,8 +207,10 @@ export class GridController extends Component {
             }
         });
         
+        // 4. Check for Game End or Refresh
         this.scheduleOnce(() => {
-            if (GameManager.instance.goalManager.currentStage >= 3) {
+            if (goalMgr.currentStage >= 3) {
+                // All 3 shapes (Cat, Home, Star) are done
                 GameManager.instance.endGame(true);
             } else {
                 this.refreshBoard();
