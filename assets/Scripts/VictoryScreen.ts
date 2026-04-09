@@ -1,5 +1,6 @@
-import { _decorator, Component, Vec3, tween, UIOpacity, Node, Label } from 'cc';
+import { _decorator, Component, Vec3, tween, UIOpacity, Node, Label, animation } from 'cc';
 import { AdManager } from '../ScriptsReusable/AdManager';
+import { TypewriterEffect } from './TypewriterEffect';
 const { ccclass, property, requireComponent } = _decorator;
 
 @ccclass('VictoryScreen')
@@ -22,6 +23,8 @@ export class VictoryScreen extends Component {
         this.node.active = false;
         this.node.setScale(Vec3.ZERO);
     }
+
+    
 
     private initializeComponents() {
         if (!this.opacityComp) {
@@ -47,8 +50,14 @@ export class VictoryScreen extends Component {
 
         // 3. UPDATE UI TEXT
         if (this.titleLabel) {
-            this.titleLabel.string = isWin ? "VICTORY!" : "OUT OF MOVES";
+            // if TypewriterEffect is available, use it to play the text animation            
+            const typewriter = this.getComponent(TypewriterEffect);
+            if (typewriter) {
+                typewriter.play(isWin ? "Solve More Shapes!" : "Solve More Shapes!");
+            } else {    
+            this.titleLabel.string = isWin ? "Solve More Shapes!" : "OUT OF MOVES";
         }
+    }
 
         // 4. RESET TRANSFORMS (Fixes the "Z: 3D parameter" issue)
         this.node.setPosition(0, 0, 0); // Center on screen

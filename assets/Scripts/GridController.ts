@@ -270,7 +270,7 @@ export class GridController extends Component {
 
                 const isShapePart = targetPath.some(p => p.x === r && p.y === c);
                 const opacityComp = dot.getComponent(UIOpacity) || dot.addComponent(UIOpacity);
-                opacityComp.opacity = isShapePart ? 255 : 175;
+                opacityComp.opacity = isShapePart ? 255 : 135;
 
                 tween(dot).to(0.6, { position: finalPos }, { easing: 'bounceOut' }).start();
             }
