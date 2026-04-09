@@ -11,15 +11,15 @@ export class GoalManager extends Component {
     @property([SpriteFrame]) filledFrames: SpriteFrame[] = [];
 
 
-    private readonly stageColors: string[] = ["blue", "green", "yellow"];
+    private readonly stageColors: string[] = ["blue", "red", "yellow"];
     private _currentStage: number = 0;
 
     private readonly stagePaths: Vec2[][] = [
         [ // Stage 0: Cat (Blue)
             v2(1, 1), v2(2, 1), v2(3, 1), v2(4, 1), v2(5, 1), v2(6, 1), v2(7,2), v2(7, 3), v2(7, 4), v2(7, 5), v2(7, 6), v2(6,7), v2(5, 7), v2(4, 7), v2(3, 7), v2(2, 7), v2(1, 7), v2(2, 6), v2(3, 5), v2(3, 4), v2(3, 3), v2(2, 2)
         ],
-        [ // Stage 1: Home (Green)
-            v2(0,4), v2(1,3), v2(2,2), v2(3,1), v2(4,1), v2(5,1), v2(6,1), v2(7,1), v2(7,2), v2(7,3), v2(7,4), v2(7,5), v2(7,6), v2(7,7), v2(6,7), v2(5,7), v2(4,7), v2(3,7), v2(2,6), v2(1,5)
+        [ // Stage 1: Home (Red)
+            v2(1,4), v2(1,4), v2(2,3), v2(3,2), v2(4,1), v2(5,1), v2(6,1), v2(7,1), v2(7,2), v2(7,3), v2(7,4), v2(7,5), v2(7,6), v2(7,7), v2(6,7), v2(5,7), v2(4,7), v2(3,6), v2(2,5)
         ],
         [ // Stage 2: Star (Yellow)
             v2(1,4), v2(3,5), v2(3,6), v2(3,7), v2(4,6), v2(5,5), v2(7,6), v2(6,4), v2(7,2), v2(5,3), v2(4,2), v2(3,1), v2(3,2), v2(3,3)

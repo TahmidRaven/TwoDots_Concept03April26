@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat, isValid, Sprite, Color, Animation } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat, isValid, Sprite, Color, Animation, UIOpacity } from 'cc';
 import { GridPiece } from './GridPiece';
 import { GameManager } from './GameManager';
 import { LightningEffect } from './LightningEffect';
@@ -56,6 +56,9 @@ export class GridController extends Component {
 
     private onDragStart(event: any) {
         if (this.isProcessing || GameManager.instance.isGameOver) return;
+        
+        this.resetGridOpacity();
+
         const tc = this.getComponent(TutorialController);
         if (tc) tc.stopTutorial(); 
         if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
@@ -67,6 +70,23 @@ export class GridController extends Component {
     private onDragMove(event: any) {
         if (!this._isDragging || this.isProcessing || this._isLoopClosed) return;
         this.handleTouchStep(event);
+    }
+
+    private resetGridOpacity() {
+        if (this.gridContainer) {
+            const containerOpacity = this.gridContainer.getComponent(UIOpacity);
+            if (containerOpacity) containerOpacity.opacity = 255;
+        }
+
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const node = this.grid[r][c];
+                if (node && isValid(node)) {
+                    const op = node.getComponent(UIOpacity);
+                    if (op) op.opacity = 255;
+                }
+            }
+        }
     }
 
     private handleTouchStep(event: any) {
@@ -154,7 +174,8 @@ export class GridController extends Component {
         this.isProcessing = true;
         const goalMgr = GameManager.instance.goalManager;
         
-        goalMgr.revealCurrentDrawing();
+        // Hide the outline first
+        goalMgr.outlineSprite.node.active = false;
         GameManager.instance.playDestroySfx(); 
 
         if (this.typewriter) {
@@ -172,11 +193,12 @@ export class GridController extends Component {
             }
         });
         
+        // Sequence: Burst first -> wait .44s -> Elastic reveal
         this.scheduleOnce(() => {
-            // Trigger Burst Prefab with explicit play
+            // 1. Spawn and play Burst Animation
             if (this.charBurstPrefab) {
                 const burst = instantiate(this.charBurstPrefab);
-                burst.parent = goalMgr.node.parent; // Parent to UI level
+                burst.parent = goalMgr.node.parent; 
                 burst.setPosition(goalMgr.filledSprite.node.position);
                 
                 const anim = burst.getComponent(Animation);
@@ -185,19 +207,29 @@ export class GridController extends Component {
                 this.scheduleOnce(() => { if (isValid(burst)) burst.destroy(); }, 1.5);
             }
 
-            tween(goalMgr.filledSprite.node)
-                .to(0.3, { scale: v3(0, 0, 0) }, { easing: 'backIn' })
-                .call(() => {
-                    goalMgr.nextStage();
-                    if (goalMgr.currentStage >= 3) {
-                        GameManager.instance.endGame(true);
-                    } else {
-                        goalMgr.updateStageVisuals();
-                        this.refreshBoard();
-                    }
-                })
-                .start();
-        }, 1.5); 
+            // 2. Delay the elastic appearance of the filled image by .44 seconds
+            this.scheduleOnce(() => {
+                goalMgr.filledSprite.spriteFrame = goalMgr.filledFrames[goalMgr.currentStage];
+                goalMgr.filledSprite.node.active = true;
+                goalMgr.filledSprite.node.setScale(v3(0, 0, 1));
+                
+                tween(goalMgr.filledSprite.node)
+                    .to(0.5, { scale: v3(1, 1, 1) }, { easing: 'backOut' })
+                    .delay(1.0) // Stay on screen for a moment
+                    .to(0.3, { scale: v3(0, 0, 0) }, { easing: 'backIn' })
+                    .call(() => {
+                        goalMgr.nextStage();
+                        if (goalMgr.currentStage >= 3) {
+                            GameManager.instance.endGame(true);
+                        } else {
+                            goalMgr.updateStageVisuals();
+                            this.refreshBoard();
+                        }
+                    })
+                    .start();
+            }, 0.44);
+
+        }, 0.5); // Initial delay to let the dots start shrinking
     }
 
     private refreshBoard() {
@@ -222,15 +254,24 @@ export class GridController extends Component {
 
     private spawnBoard() {
         this.isProcessing = true;
+        const goalMgr = GameManager.instance.goalManager;
+        const targetPath = goalMgr.getPathForCurrentStage();
+
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const dot = instantiate(this.getPrefabForCell(r, c));
                 dot.parent = this.gridContainer || this.node; 
                 const piece = dot.getComponent(GridPiece)!;
                 piece.row = r; piece.col = c;
+                
                 const finalPos = this.getPosOfCell(r, c);
                 dot.setPosition(finalPos.x, finalPos.y + 600, 0);
                 this.grid[r][c] = dot;
+
+                const isShapePart = targetPath.some(p => p.x === r && p.y === c);
+                const opacityComp = dot.getComponent(UIOpacity) || dot.addComponent(UIOpacity);
+                opacityComp.opacity = isShapePart ? 255 : 175;
+
                 tween(dot).to(0.6, { position: finalPos }, { easing: 'bounceOut' }).start();
             }
         }
