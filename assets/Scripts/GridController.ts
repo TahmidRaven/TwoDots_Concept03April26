@@ -174,7 +174,9 @@ export class GridController extends Component {
         this.isProcessing = true;
         const goalMgr = GameManager.instance.goalManager;
         
-        // Hide the outline first
+        // 1. Clear lines immediately
+        if (this.lightning) this.lightning.clearWeb();
+
         goalMgr.outlineSprite.node.active = false;
         GameManager.instance.playDestroySfx(); 
 
@@ -186,16 +188,25 @@ export class GridController extends Component {
             }
         }
         
+        // 2. Destroy the specific dots in the chain
         const uniqueNodes = Array.from(new Set(this._currentChain));
         uniqueNodes.forEach(node => {
             if (isValid(node)) {
-                tween(node).to(0.2, { scale: v3(0, 0, 0) }).call(() => node.destroy()).start();
+                // Shrink animation before destruction
+                tween(node)
+                    .to(0.15, { scale: v3(1.4, 1.4, 1) }, { easing: 'sineOut' }) // Brief "pop" up
+                    .to(0.2, { scale: v3(0, 0, 0) }, { easing: 'sineIn' })     // Shrink to nothing
+                    .call(() => {
+                        // Clean up grid reference
+                        const piece = node.getComponent(GridPiece);
+                        if (piece) this.grid[piece.row][piece.col] = null;
+                        node.destroy();
+                    })
+                    .start();
             }
         });
         
-        // Sequence: Burst first -> wait .44s -> Elastic reveal
         this.scheduleOnce(() => {
-            // 1. Spawn and play Burst Animation
             if (this.charBurstPrefab) {
                 const burst = instantiate(this.charBurstPrefab);
                 burst.parent = goalMgr.node.parent; 
@@ -207,7 +218,6 @@ export class GridController extends Component {
                 this.scheduleOnce(() => { if (isValid(burst)) burst.destroy(); }, 1.5);
             }
 
-            // 2. Delay the elastic appearance of the filled image by .44 seconds
             this.scheduleOnce(() => {
                 goalMgr.filledSprite.spriteFrame = goalMgr.filledFrames[goalMgr.currentStage];
                 goalMgr.filledSprite.node.active = true;
@@ -215,7 +225,7 @@ export class GridController extends Component {
                 
                 tween(goalMgr.filledSprite.node)
                     .to(0.5, { scale: v3(1, 1, 1) }, { easing: 'backOut' })
-                    .delay(1.0) // Stay on screen for a moment
+                    .delay(1.0) 
                     .to(0.3, { scale: v3(0, 0, 0) }, { easing: 'backIn' })
                     .call(() => {
                         goalMgr.nextStage();
@@ -229,7 +239,7 @@ export class GridController extends Component {
                     .start();
             }, 0.44);
 
-        }, 0.5); // Initial delay to let the dots start shrinking
+        }, 0.3); // Faster sequence to match visual "pop"
     }
 
     private refreshBoard() {
