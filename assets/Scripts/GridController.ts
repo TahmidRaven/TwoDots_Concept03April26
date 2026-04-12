@@ -174,9 +174,7 @@ export class GridController extends Component {
         this.isProcessing = true;
         const goalMgr = GameManager.instance.goalManager;
         
-        // 1. Clear lines immediately
         if (this.lightning) this.lightning.clearWeb();
-
         goalMgr.outlineSprite.node.active = false;
         GameManager.instance.playDestroySfx(); 
 
@@ -188,16 +186,13 @@ export class GridController extends Component {
             }
         }
         
-        // 2. Destroy the specific dots in the chain
         const uniqueNodes = Array.from(new Set(this._currentChain));
         uniqueNodes.forEach(node => {
             if (isValid(node)) {
-                // Shrink animation before destruction
                 tween(node)
-                    .to(0.15, { scale: v3(1.4, 1.4, 1) }, { easing: 'sineOut' }) // Brief "pop" up
-                    .to(0.2, { scale: v3(0, 0, 0) }, { easing: 'sineIn' })     // Shrink to nothing
+                    .to(0.15, { scale: v3(1.4, 1.4, 1) }, { easing: 'sineOut' })
+                    .to(0.2, { scale: v3(0, 0, 0) }, { easing: 'sineIn' })
                     .call(() => {
-                        // Clean up grid reference
                         const piece = node.getComponent(GridPiece);
                         if (piece) this.grid[piece.row][piece.col] = null;
                         node.destroy();
@@ -210,7 +205,7 @@ export class GridController extends Component {
             if (this.charBurstPrefab) {
                 const burst = instantiate(this.charBurstPrefab);
                 burst.parent = goalMgr.node.parent; 
-                burst.setPosition(goalMgr.filledSprite.node.position);
+                burst.setPosition(goalMgr.charAnimation.node.position);
                 
                 const anim = burst.getComponent(Animation);
                 if (anim) anim.play(); 
@@ -219,11 +214,19 @@ export class GridController extends Component {
             }
 
             this.scheduleOnce(() => {
-                goalMgr.filledSprite.spriteFrame = goalMgr.filledFrames[goalMgr.currentStage];
-                goalMgr.filledSprite.node.active = true;
-                goalMgr.filledSprite.node.setScale(v3(0, 0, 1));
+                const charNode = goalMgr.charAnimation.node;
+                charNode.active = true;
+                charNode.setScale(v3(0, 0, 1));
+
+                // Play the animation clip for the current stage
+                const clip = goalMgr.filledAnimations[goalMgr.currentStage];
+                if (clip) {
+                    // Ensure clip is registered and play it
+                    if(!goalMgr.charAnimation.getState(clip.name)) goalMgr.charAnimation.addClip(clip);
+                    goalMgr.charAnimation.play(clip.name);
+                }
                 
-                tween(goalMgr.filledSprite.node)
+                tween(charNode)
                     .to(0.5, { scale: v3(1, 1, 1) }, { easing: 'backOut' })
                     .delay(1.0) 
                     .to(0.3, { scale: v3(0, 0, 0) }, { easing: 'backIn' })
@@ -239,7 +242,7 @@ export class GridController extends Component {
                     .start();
             }, 0.44);
 
-        }, 0.3); // Faster sequence to match visual "pop"
+        }, 0.3);
     }
 
     private refreshBoard() {

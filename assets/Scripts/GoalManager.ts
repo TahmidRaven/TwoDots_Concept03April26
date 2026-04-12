@@ -1,14 +1,18 @@
-import { _decorator, Component, Node, Vec2, v2, v3, tween, Sprite, SpriteFrame } from 'cc';
+import { _decorator, Component, Node, Vec2, v2, v3, tween, Sprite, SpriteFrame, Animation, AnimationClip } from 'cc';
 import { GridPiece } from './GridPiece';
 const { ccclass, property } = _decorator;
 
 @ccclass('GoalManager')
 export class GoalManager extends Component {
     @property(Sprite) outlineSprite: Sprite = null!;
-    @property(Sprite) filledSprite: Sprite = null!;
+    
+    // The node that contains the Animation component for the characters
+    @property(Animation) charAnimation: Animation = null!;
     
     @property([SpriteFrame]) outlineFrames: SpriteFrame[] = [];
-    @property([SpriteFrame]) filledFrames: SpriteFrame[] = [];
+    
+    // Instead of Filled Frames, we now use Animation Clips
+    @property([AnimationClip]) filledAnimations: AnimationClip[] = [];
 
     private readonly stageColors: string[] = ["blue", "red", "yellow"];
     private _currentStage: number = 0;
@@ -37,7 +41,11 @@ export class GoalManager extends Component {
         if (this._currentStage < this.outlineFrames.length) {
             this.outlineSprite.spriteFrame = this.outlineFrames[this._currentStage];
             this.outlineSprite.node.active = false; 
-            this.filledSprite.node.active = false;
+            
+            if (this.charAnimation) {
+                this.charAnimation.node.active = false;
+            }
+            
             this.outlineSprite.node.setScale(v3(1, 1, 1));
         }
     }
@@ -53,16 +61,12 @@ export class GoalManager extends Component {
         if (this.outlineSprite) this.outlineSprite.node.active = false;
     }
 
-    /**
-     * Updated checkPathMatch: Validates color, length, and strict coordinate sequence.
-     */
     public checkPathMatch(playerChain: Node[], isLoopClosed: boolean): boolean {
         if (!isLoopClosed) return false;
 
         const targetPath = this.getPathForCurrentStage();
         const requiredColor = this.getRequiredColor();
 
-        // 1. Length and Color Validation
         if (playerChain.length !== targetPath.length) return false;
 
         const validColor = playerChain.every(node => {
@@ -71,23 +75,16 @@ export class GoalManager extends Component {
         });
         if (!validColor) return false;
 
-        // 2. Map Nodes to Coordinates
         const playerCoords = playerChain.map(node => {
             const piece = node.getComponent(GridPiece)!;
             return v2(piece.row, piece.col);
         });
 
-        // 3. Circular Sequence Validation
         return this.isCircularMatch(playerCoords, targetPath);
     }
 
-    /**
-     * Checks if the player's path matches the target path in order, 
-     * accounting for starting at different points or drawing in reverse.
-     */
     private isCircularMatch(playerPath: Vec2[], targetPath: Vec2[]): boolean {
         const len = targetPath.length;
-
         const comparePaths = (pathA: Vec2[], pathB: Vec2[]) => {
             for (let i = 0; i < len; i++) {
                 if (pathA[i].x !== pathB[i].x || pathA[i].y !== pathB[i].y) return false;
@@ -95,34 +92,39 @@ export class GoalManager extends Component {
             return true;
         };
 
-        // Try every possible start point on the target path
         for (let startOffset = 0; startOffset < len; startOffset++) {
             const shiftedTarget: Vec2[] = [];
             const reversedTarget: Vec2[] = [];
-
             for (let i = 0; i < len; i++) {
-                // Forward check
                 shiftedTarget.push(targetPath[(startOffset + i) % len]);
-                // Backward/Reverse check
                 reversedTarget.push(targetPath[(startOffset - i + len) % len]);
             }
-
             if (comparePaths(playerPath, shiftedTarget) || comparePaths(playerPath, reversedTarget)) {
                 return true;
             }
         }
-
         return false;
     }
 
+    /**
+     * Now plays the animation clip instead of setting a sprite frame.
+     */
     public revealCurrentDrawing() {
-        if (this._currentStage < this.filledFrames.length) {
+        if (this._currentStage < this.filledAnimations.length && this.charAnimation) {
             this.unschedule(this.hideOutline);
             this.outlineSprite.node.active = false;
-            this.filledSprite.spriteFrame = this.filledFrames[this._currentStage];
-            this.filledSprite.node.active = true;
-            this.filledSprite.node.setScale(v3(0, 0, 1));
-            tween(this.filledSprite.node)
+
+            const targetClip = this.filledAnimations[this._currentStage];
+            
+            // Ensure the node is active to play animation
+            this.charAnimation.node.active = true;
+            this.charAnimation.node.setScale(v3(0, 0, 1));
+
+            // Add the clip to the animation component if it's not already there and play
+            const state = this.charAnimation.getState(targetClip.name) || this.charAnimation.addClip(targetClip);
+            this.charAnimation.play(targetClip.name);
+
+            tween(this.charAnimation.node)
                 .to(0.4, { scale: v3(1, 1, 1) }, { easing: 'backOut' })
                 .start();
         }
