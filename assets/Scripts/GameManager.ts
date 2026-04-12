@@ -66,7 +66,7 @@ export class GameManager extends Component {
         if (this.bgm) this.bgm.play();
 
         if (this.typewriter) {
-            this.typewriter.play("Connect Dots To Reveal The Drawing!");
+            this.typewriter.play("Connect the dots to reveal the image");
         }
         AdManager.gameReady();
     }

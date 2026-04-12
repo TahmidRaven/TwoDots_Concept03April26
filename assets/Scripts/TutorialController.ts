@@ -15,15 +15,18 @@ export class TutorialController extends Component {
     private _idleTimer: number = 0;
     private _isShowingTutorial: boolean = false;
     private _tutorialTween: Tween<Node> | null = null;
-    private _hasCompletedFirstTutorialInStage: boolean = false;
+    
+    // Tracks if the full path has been shown for the current stage
+    private _hasShownFullTutorialInStage: boolean = false;
     private _lastCheckedStage: number = -1;
 
     update(dt: number) {
         if (!GameManager.instance || !GameManager.instance.goalManager) return;
         const currentStage = GameManager.instance.goalManager.currentStage;
 
+        // Reset the flag when the stage changes
         if (currentStage !== this._lastCheckedStage) {
-            this._hasCompletedFirstTutorialInStage = false;
+            this._hasShownFullTutorialInStage = false;
             this._lastCheckedStage = currentStage;
         }
 
@@ -35,7 +38,12 @@ export class TutorialController extends Component {
 
         this._idleTimer += dt;
         if (this._idleTimer >= this.idleThreshold && !this._isShowingTutorial) {
-            this.playFullSuggestion();
+            // Decide which tutorial to play
+            if (!this._hasShownFullTutorialInStage) {
+                this.playFullSuggestion();
+            } else {
+                this.playStartPointHint();
+            }
         }
     }
 
@@ -50,12 +58,14 @@ export class TutorialController extends Component {
         if (this.grid && this.grid.lightning) this.grid.lightning.clearWeb();
     }
 
+    /**
+     * Shows the entire drawing path once.
+     */
     public playFullSuggestion() {
         const gm = GameManager.instance.goalManager;
         const path: Vec2[] = gm.getPathForCurrentStage();
         if (path.length < 2) return;
 
-        // Flash outline briefly
         gm.flashOutline(1.0); 
 
         this._isShowingTutorial = true;
@@ -69,12 +79,36 @@ export class TutorialController extends Component {
         for (let i = 1; i < path.length; i++) {
             this.addTweenSegment(path[i-1], path[i], colorHex);
         }
+        // Close the loop
         this.addTweenSegment(path[path.length - 1], path[0], colorHex);
 
         this._tutorialTween.delay(1.5).call(() => {
-            this._hasCompletedFirstTutorialInStage = true; 
+            this._hasShownFullTutorialInStage = true; // Mark as shown for this stage
             this.stopTutorial();
         }).start();
+    }
+
+    /**
+     * Only shows the hand pointing/pulsing at the first dot of the path.
+     */
+    private playStartPointHint() {
+        const gm = GameManager.instance.goalManager;
+        const path: Vec2[] = gm.getPathForCurrentStage();
+        if (path.length === 0) return;
+
+        this._isShowingTutorial = true;
+        
+        // Flash the outline briefly to remind them of the shape
+        gm.flashOutline(0.8);
+
+        const startPos = this.grid.getPosOfCell(path[0].x, path[0].y);
+        this.hand.showAt(startPos);
+
+        // Keep it showing for 3 seconds then hide automatically if user doesn't interact
+        this._tutorialTween = tween(this.node)
+            .delay(3.0)
+            .call(() => this.stopTutorial())
+            .start();
     }
 
     private addTweenSegment(startCoord: Vec2, endCoord: Vec2, colorHex: string) {

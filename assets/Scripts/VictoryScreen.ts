@@ -53,9 +53,9 @@ export class VictoryScreen extends Component {
             // if TypewriterEffect is available, use it to play the text animation            
             const typewriter = this.getComponent(TypewriterEffect);
             if (typewriter) {
-                typewriter.play(isWin ? "Solve More Shapes!" : "Solve More Shapes!");
+                typewriter.play(isWin ? "Discover more hidden images" : "Discover more hidden images");
             } else {    
-            this.titleLabel.string = isWin ? "Solve More Shapes!" : "OUT OF MOVES";
+            this.titleLabel.string = isWin ? "Discover more hidden images" : "OUT OF MOVES";
         }
     }
 

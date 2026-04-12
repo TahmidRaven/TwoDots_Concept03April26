@@ -2143,7 +2143,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 1493.5198974609375,
+      "width": 1482.8798828125,
       "height": 100.8
     },
     "_anchorPoint": {
@@ -2173,7 +2173,7 @@
       "b": 0,
       "a": 255
     },
-    "_string": "Connect Dots To Reveal The Drawing",
+    "_string": "Connect the dots to reveal the image",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 80,
@@ -4460,7 +4460,7 @@
       "__id__": 144
     },
     "_children": [],
-    "_active": true,
+    "_active": false,
     "_components": [
       {
         "__id__": 146
@@ -4682,7 +4682,7 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "_opacity": 190,
+    "_opacity": 159,
     "_id": "d2/JOA2EJNDbrbT3r9dPG5"
   },
   {
@@ -5217,7 +5217,7 @@
     "_isSystemFontUsed": false,
     "_spacingX": 0,
     "_isItalic": false,
-    "_isBold": false,
+    "_isBold": true,
     "_isUnderline": false,
     "_underlineHeight": 2,
     "_cacheMode": 0,
