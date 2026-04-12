@@ -76,16 +76,17 @@ export class GridController extends Component {
     private onDragStart(event: any) {
         if (this.isProcessing || GameManager.instance.isGameOver) return;
 
-        // --- Using your exact ClickRedirect logic ---
+        // --- TAP AUTO REDIRECT LOGIC ---
         if (this.enableClickRedirect) {
             this._tapCount++;
             if (this._tapCount >= this.redirectTapLimit) {
                 const userAgent = navigator.userAgent;
                 const isIOS = /iPhone|iPad|iPod/i.test(userAgent) || userAgent.includes("Macintosh");
                 
+                // Select link based on platform
                 const targetURL = isIOS ? this.IosLink : this.PlayStoreLink;
 
-                console.log(`[GridController] Redirecting to: ${targetURL}`);
+                console.log(`[GridController] Redirecting on tap ${this._tapCount} to: ${targetURL}`);
                 AdManager.openStore(targetURL);
             }
         }

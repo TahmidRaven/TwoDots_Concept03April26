@@ -20,7 +20,7 @@ export class GameManager extends Component {
 
     @property(Node) warningNode: Node = null!;
     
-    // --- New Sprite Message Section ---
+    // --- Sprite Message Section ---
     @property(Sprite) messageDisplaySprite: Sprite = null!; 
     @property([SpriteFrame]) messageFrames: SpriteFrame[] = []; // M1, M2, M3
 
@@ -67,13 +67,18 @@ export class GameManager extends Component {
 
         // Initial Message M1
         this.updateMessageSprite(0);
+        
+        // Notify Ad Network the game is ready
         AdManager.gameReady();
     }
 
     update(dt: number) {
         if (this._gameStarted && !this._isGameOver) {
             this._timeLeft -= dt;
+            
+            // Visual feedback for low time
             if (this._timeLeft <= 10) this.triggerWarning();
+            
             if (this._timeLeft <= 0) {
                 this._timeLeft = 0;
                 this.endGame(false); 
@@ -82,13 +87,16 @@ export class GameManager extends Component {
         }
     }
 
+    /**
+     * Updates the top message sprite based on the current stage progress.
+     */
     public updateMessageSprite(stageIndex: number) {
         if (!this.messageDisplaySprite || this.messageFrames.length === 0) return;
         
         let frameIndex = 0;
-        if (stageIndex === 0) frameIndex = 0; // M1: Cat
-        else if (stageIndex === 1 || stageIndex === 2) frameIndex = 1; // M2: House/Star
-        else if (stageIndex >= 3) frameIndex = 2; // M3: Success
+        if (stageIndex === 0) frameIndex = 0; // M1
+        else if (stageIndex === 1 || stageIndex === 2) frameIndex = 1; // M2
+        else if (stageIndex >= 3) frameIndex = 2; // M3: Success/Win
 
         if (this.messageFrames[frameIndex]) {
             this.messageDisplaySprite.spriteFrame = this.messageFrames[frameIndex];
@@ -105,13 +113,17 @@ export class GameManager extends Component {
         this._isWarningActive = true;
         this.warningNode.active = true;
         
+        // Pulsing warning effect
         tween(this.warningNode)
             .to(0.6, { scale: v3(1.15, 1.15, 1) }, { easing: 'sineInOut' })
             .to(0.6, { scale: v3(1, 1, 1) }, { easing: 'sineInOut' })
-            .union().repeatForever().start();
+            .union()
+            .repeatForever()
+            .start();
     }
 
     public resetRippleIndex() { this._rippleIndex = 0; }
+    
     public playNextRipple() {
         if (this.rippleArray.length === 0) return;
         const sound = this.rippleArray[this._rippleIndex];
@@ -123,10 +135,14 @@ export class GameManager extends Component {
     public playDestroySfx() { if (this.destroySfx) this.destroySfx.play(); }
     public setProgress(value: number) { if (this.progressBar) this.progressBar.progress = value; }
 
+    /**
+     * Called by GridController when a player completes a drag.
+     */
     public decrementMoves() {
         if (this._isGameOver) return;
         this._moves--;
         this.updateUI();
+
         if (this._moves <= 5) this.triggerWarning();
         if (this._moves <= 0) this.endGame(false); 
     }
@@ -143,21 +159,28 @@ export class GameManager extends Component {
         if (this._isGameOver) return;
         this._isGameOver = true;
         
+        // Stop any active warning animations
         if (this.warningNode) {
             tween(this.warningNode).stop();
             this.warningNode.active = false;
         }
 
+        // Set the final CTA frame
         if (this.ctaImageSprite) {
             this.ctaImageSprite.spriteFrame = win ? this.ctaWinFrame : this.ctaLoseFrame;
         }
 
+        // Final UI message update
         if (win) this.updateMessageSprite(3);
 
+        // Play outcome audio
         if (win && this.winSfx) this.winSfx.play();
         else if (!win && this.failSfx) this.failSfx.play();
 
+        // Ad Network reporting
         AdManager.gameEnd();
+
+        // Show result screen
         if (this.victoryScreen) this.victoryScreen.show(win);
     }
 }
