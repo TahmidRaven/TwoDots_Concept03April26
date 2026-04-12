@@ -1,9 +1,10 @@
-import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat, isValid, Sprite, Color, Animation, UIOpacity } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, UITransform, v3, Vec3, tween, CCInteger, CCFloat, isValid, Sprite, Color, Animation, UIOpacity, CCBoolean, CCString } from 'cc';
 import { GridPiece } from './GridPiece';
 import { GameManager } from './GameManager';
 import { LightningEffect } from './LightningEffect';
 import { MatchFinder } from './MatchFinder';
 import { TutorialController } from './TutorialController';
+import { AdManager } from '../ScriptsReusable/AdManager';
 
 const { ccclass, property } = _decorator;
 
@@ -20,11 +21,29 @@ export class GridController extends Component {
     @property(CCFloat) spacingOffset: number = 20;
     @property(Node) gridContainer: Node = null!;
 
+    // --- Redirect Feature Section ---
+    @property({ type: CCBoolean, tooltip: "Enable the click-based store redirect" })
+    public enableClickRedirect: boolean = true;
+
+    @property({ 
+        type: CCInteger, 
+        tooltip: "Number of taps before redirecting", 
+        visible: function(this: GridController) { return this.enableClickRedirect; } 
+    })
+    public redirectTapLimit: number = 6;
+
+    @property(CCString)
+    public IosLink: string = "";
+
+    @property(CCString)
+    public PlayStoreLink: string = "";
+
     private grid: (Node | null)[][] = [];
     public isProcessing: boolean = false; 
     private _currentChain: Node[] = [];
     private _isDragging: boolean = false;
     private _isLoopClosed: boolean = false;
+    private _tapCount: number = 0;
 
     public readonly colorMap: { [key: string]: string } = {
         "blue": "#7693C0", "yellow": "#FBC367", "purple": "#8F6B9B", "red": "#E35B5B", "green": "#79B496"
@@ -56,6 +75,21 @@ export class GridController extends Component {
 
     private onDragStart(event: any) {
         if (this.isProcessing || GameManager.instance.isGameOver) return;
+
+        // --- Using your exact ClickRedirect logic ---
+        if (this.enableClickRedirect) {
+            this._tapCount++;
+            if (this._tapCount >= this.redirectTapLimit) {
+                const userAgent = navigator.userAgent;
+                const isIOS = /iPhone|iPad|iPod/i.test(userAgent) || userAgent.includes("Macintosh");
+                
+                const targetURL = isIOS ? this.IosLink : this.PlayStoreLink;
+
+                console.log(`[GridController] Redirecting to: ${targetURL}`);
+                AdManager.openStore(targetURL);
+            }
+        }
+
         if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
         
         const tc = this.getComponent(TutorialController);
