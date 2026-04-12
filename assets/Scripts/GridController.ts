@@ -4,7 +4,6 @@ import { GameManager } from './GameManager';
 import { LightningEffect } from './LightningEffect';
 import { MatchFinder } from './MatchFinder';
 import { TutorialController } from './TutorialController';
-import { TypewriterEffect } from './TypewriterEffect';
 
 const { ccclass, property } = _decorator;
 
@@ -20,7 +19,6 @@ export class GridController extends Component {
     @property(CCFloat) cellSize: number = 55;
     @property(CCFloat) spacingOffset: number = 20;
     @property(Node) gridContainer: Node = null!;
-    @property(TypewriterEffect) typewriter: TypewriterEffect = null!;
 
     private grid: (Node | null)[][] = [];
     public isProcessing: boolean = false; 
@@ -28,10 +26,10 @@ export class GridController extends Component {
     private _isDragging: boolean = false;
     private _isLoopClosed: boolean = false;
 
-    public get isDragging(): boolean { return this._isDragging; }
     public readonly colorMap: { [key: string]: string } = {
         "blue": "#7693C0", "yellow": "#FBC367", "purple": "#8F6B9B", "red": "#E35B5B", "green": "#79B496"
     };
+
     private get spacing(): number { return this.cellSize + this.spacingOffset; }
 
     onLoad() {
@@ -40,6 +38,8 @@ export class GridController extends Component {
         this.node.on(Node.EventType.TOUCH_END, this.onDragEnd, this);
         this.node.on(Node.EventType.TOUCH_CANCEL, this.onDragEnd, this);
     }
+
+    public get isDragging(): boolean { return this._isDragging; }
 
     public initGrid() {
         for (let r = 0; r < this.rows; r++) {
@@ -56,12 +56,11 @@ export class GridController extends Component {
 
     private onDragStart(event: any) {
         if (this.isProcessing || GameManager.instance.isGameOver) return;
+        if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
         
-        this.resetGridOpacity();
-
         const tc = this.getComponent(TutorialController);
         if (tc) tc.stopTutorial(); 
-        if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
+
         GameManager.instance.resetRippleIndex(); 
         this._isDragging = true;
         this.handleTouchStep(event);
@@ -70,23 +69,6 @@ export class GridController extends Component {
     private onDragMove(event: any) {
         if (!this._isDragging || this.isProcessing || this._isLoopClosed) return;
         this.handleTouchStep(event);
-    }
-
-    private resetGridOpacity() {
-        if (this.gridContainer) {
-            const containerOpacity = this.gridContainer.getComponent(UIOpacity);
-            if (containerOpacity) containerOpacity.opacity = 255;
-        }
-
-        for (let r = 0; r < this.rows; r++) {
-            for (let c = 0; c < this.cols; c++) {
-                const node = this.grid[r][c];
-                if (node && isValid(node)) {
-                    const op = node.getComponent(UIOpacity);
-                    if (op) op.opacity = 255;
-                }
-            }
-        }
     }
 
     private handleTouchStep(event: any) {
@@ -112,7 +94,7 @@ export class GridController extends Component {
                 this.lightning.addBolt(lastNode.position, node.position, this.colorMap[piece.colorId]);
                 this.lightning.clearPreview();
                 this._isLoopClosed = true; 
-                this.spawnWhiteDotEffect(node, piece.colorId); 
+                this.spawnWhiteDotEffect(node, piece.colorId);
                 GameManager.instance.playNextRipple(); 
                 GameManager.instance.setProgress(1.0);
                 return;
@@ -121,7 +103,7 @@ export class GridController extends Component {
             if (this._currentChain.indexOf(node) === -1) {
                 if (this._currentChain.length === 0) {
                     this._currentChain.push(node);
-                    this.spawnWhiteDotEffect(node, piece.colorId); 
+                    this.spawnWhiteDotEffect(node, piece.colorId);
                     GameManager.instance.playNextRipple(); 
                 } else {
                     const lastPiece = this._currentChain[this._currentChain.length - 1].getComponent(GridPiece)!;
@@ -129,11 +111,10 @@ export class GridController extends Component {
                         const lastPos = this._currentChain[this._currentChain.length - 1].position;
                         this.lightning.addBolt(lastPos, node.position, this.colorMap[piece.colorId]);
                         this._currentChain.push(node);
-                        this.spawnWhiteDotEffect(node, piece.colorId); 
+                        this.spawnWhiteDotEffect(node, piece.colorId);
                         GameManager.instance.playNextRipple(); 
                         const targetLength = GameManager.instance.goalManager.getPathForCurrentStage().length;
-                        const progress = Math.min(this._currentChain.length / targetLength, 0.95);
-                        GameManager.instance.setProgress(progress);
+                        GameManager.instance.setProgress(Math.min(this._currentChain.length / targetLength, 0.95));
                     }
                 }
             }
@@ -145,12 +126,8 @@ export class GridController extends Component {
         const effect = instantiate(this.whiteDotPrefab);
         effect.parent = this.gridContainer || this.node;
         effect.setPosition(targetNode.position);
-        const sprite = effect.getComponent(Sprite) || effect.getComponentInChildren(Sprite);
-        if (sprite) {
-            const hex = this.colorMap[colorId] || "#FFFFFF";
-            sprite.color = new Color().fromHEX(hex);
-        }
-        effect.setSiblingIndex(0); 
+        const sprite = effect.getComponent(Sprite);
+        if (sprite) sprite.color = new Color().fromHEX(this.colorMap[colorId] || "#FFFFFF");
         effect.setScale(v3(0.5, 0.5, 1));
         tween(effect).to(0.4, { scale: v3(1.8, 1.8, 1) }, { easing: 'sineOut' }).start();
         this.scheduleOnce(() => { if (isValid(effect)) effect.destroy(); }, 0.5);
@@ -173,18 +150,8 @@ export class GridController extends Component {
     private handleSuccess() {
         this.isProcessing = true;
         const goalMgr = GameManager.instance.goalManager;
-        
         if (this.lightning) this.lightning.clearWeb();
-        goalMgr.outlineSprite.node.active = false;
         GameManager.instance.playDestroySfx(); 
-
-        if (this.typewriter) {
-            if (goalMgr.currentStage < 2) {
-                this.typewriter.play("Great! Now draw the next shape.");
-            } else {
-                this.typewriter.play("Play more to reveal shapes");
-            }
-        }
         
         const uniqueNodes = Array.from(new Set(this._currentChain));
         uniqueNodes.forEach(node => {
@@ -196,8 +163,7 @@ export class GridController extends Component {
                         const piece = node.getComponent(GridPiece);
                         if (piece) this.grid[piece.row][piece.col] = null;
                         node.destroy();
-                    })
-                    .start();
+                    }).start();
             }
         });
         
@@ -206,22 +172,16 @@ export class GridController extends Component {
                 const burst = instantiate(this.charBurstPrefab);
                 burst.parent = goalMgr.node.parent; 
                 burst.setPosition(goalMgr.charAnimation.node.position);
-                
                 const anim = burst.getComponent(Animation);
                 if (anim) anim.play(); 
-
                 this.scheduleOnce(() => { if (isValid(burst)) burst.destroy(); }, 1.5);
             }
 
             this.scheduleOnce(() => {
                 const charNode = goalMgr.charAnimation.node;
                 charNode.active = true;
-                charNode.setScale(v3(0, 0, 1));
-
-                // Play the animation clip for the current stage
                 const clip = goalMgr.filledAnimations[goalMgr.currentStage];
                 if (clip) {
-                    // Ensure clip is registered and play it
                     if(!goalMgr.charAnimation.getState(clip.name)) goalMgr.charAnimation.addClip(clip);
                     goalMgr.charAnimation.play(clip.name);
                 }
@@ -232,16 +192,15 @@ export class GridController extends Component {
                     .to(0.3, { scale: v3(0, 0, 0) }, { easing: 'backIn' })
                     .call(() => {
                         goalMgr.nextStage();
+                        GameManager.instance.updateMessageSprite(goalMgr.currentStage);
                         if (goalMgr.currentStage >= 3) {
                             GameManager.instance.endGame(true);
                         } else {
                             goalMgr.updateStageVisuals();
                             this.refreshBoard();
                         }
-                    })
-                    .start();
+                    }).start();
             }, 0.44);
-
         }, 0.3);
     }
 
@@ -281,9 +240,8 @@ export class GridController extends Component {
                 dot.setPosition(finalPos.x, finalPos.y + 600, 0);
                 this.grid[r][c] = dot;
 
-                const isShapePart = targetPath.some(p => p.x === r && p.y === c);
                 const opacityComp = dot.getComponent(UIOpacity) || dot.addComponent(UIOpacity);
-                opacityComp.opacity = isShapePart ? 255 : 135;
+                opacityComp.opacity = targetPath.some(p => p.x === r && p.y === c) ? 255 : 135;
 
                 tween(dot).to(0.6, { position: finalPos }, { easing: 'bounceOut' }).start();
             }
@@ -293,9 +251,8 @@ export class GridController extends Component {
 
     private getPrefabForCell(r: number, c: number): Prefab {
         const gm = GameManager.instance.goalManager;
-        const targetPath = gm.getPathForCurrentStage();
         const goalColor = gm.getRequiredColor();
-        const isShapePart = targetPath.some(p => p.x === r && p.y === c);
+        const isShapePart = gm.getPathForCurrentStage().some(p => p.x === r && p.y === c);
         if (isShapePart) {
             return this.dotPrefabs.find(p => p.data.getComponent(GridPiece)!.colorId === goalColor) || this.dotPrefabs[0];
         }
