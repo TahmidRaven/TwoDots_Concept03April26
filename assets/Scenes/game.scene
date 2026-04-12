@@ -2709,7 +2709,8 @@
     "gridContainer": {
       "__id__": 117
     },
-    "enableClickRedirect": true,
+    "enableClickRedirect": false,
+    "redirectOnSuccess": true,
     "redirectTapLimit": 6,
     "IosLink": "https://apps.apple.com/us/app/two-dots-connect-the-colors/id880178264",
     "PlayStoreLink": "https://play.google.com/store/apps/details?id=com.weplaydots.twodotsandroid&hl=en&lang=en",

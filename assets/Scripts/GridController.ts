@@ -25,6 +25,9 @@ export class GridController extends Component {
     @property({ type: CCBoolean, tooltip: "Enable the click-based store redirect" })
     public enableClickRedirect: boolean = true;
 
+    @property({ type: CCBoolean, tooltip: "Redirect to store after every successful drawing (Cat, House, Star)" })
+    public redirectOnSuccess: boolean = true;
+
     @property({ 
         type: CCInteger, 
         tooltip: "Number of taps before redirecting", 
@@ -80,14 +83,7 @@ export class GridController extends Component {
         if (this.enableClickRedirect) {
             this._tapCount++;
             if (this._tapCount >= this.redirectTapLimit) {
-                const userAgent = navigator.userAgent;
-                const isIOS = /iPhone|iPad|iPod/i.test(userAgent) || userAgent.includes("Macintosh");
-                
-                // Select link based on platform
-                const targetURL = isIOS ? this.IosLink : this.PlayStoreLink;
-
-                console.log(`[GridController] Redirecting on tap ${this._tapCount} to: ${targetURL}`);
-                AdManager.openStore(targetURL);
+                this.performRedirect();
             }
         }
 
@@ -99,6 +95,14 @@ export class GridController extends Component {
         GameManager.instance.resetRippleIndex(); 
         this._isDragging = true;
         this.handleTouchStep(event);
+    }
+
+    private performRedirect() {
+        const userAgent = navigator.userAgent;
+        const isIOS = /iPhone|iPad|iPod/i.test(userAgent) || userAgent.includes("Macintosh");
+        const targetURL = isIOS ? this.IosLink : this.PlayStoreLink;
+        console.log(`[GridController] Redirecting to: ${targetURL}`);
+        AdManager.openStore(targetURL);
     }
 
     private onDragMove(event: any) {
@@ -226,6 +230,11 @@ export class GridController extends Component {
                     .delay(1.0) 
                     .to(0.3, { scale: v3(0, 0, 0) }, { easing: 'backIn' })
                     .call(() => {
+                        // --- SUCCESS REDIRECT LOGIC ---
+                        if (this.redirectOnSuccess) {
+                            this.performRedirect();
+                        }
+
                         goalMgr.nextStage();
                         GameManager.instance.updateMessageSprite(goalMgr.currentStage);
                         if (goalMgr.currentStage >= 3) {
