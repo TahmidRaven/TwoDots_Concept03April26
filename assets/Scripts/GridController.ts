@@ -99,10 +99,21 @@ export class GridController extends Component {
 
     private performRedirect() {
         const userAgent = navigator.userAgent;
-        const isIOS = /iPhone|iPad|iPod/i.test(userAgent) || userAgent.includes("Macintosh");
+        const platform = navigator.platform;
+
+        //  Check for modern iPad/iPhone reporting as "MacIntel" but with Touch Support
+        const isIOS = /iPhone|iPad|iPod/i.test(userAgent) || 
+                    (/MacIntel/.test(platform) && navigator.maxTouchPoints > 1);
+
         const targetURL = isIOS ? this.IosLink : this.PlayStoreLink;
+        
         console.log(`[GridController] Redirecting to: ${targetURL}`);
-        AdManager.openStore(targetURL);
+        
+        if (targetURL && targetURL !== "") {
+            AdManager.openStore(targetURL);
+        } else {
+            console.warn("Redirect triggered but target URL is empty!");
+        }
     }
 
     private onDragMove(event: any) {
