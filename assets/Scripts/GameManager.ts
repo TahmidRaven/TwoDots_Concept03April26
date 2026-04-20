@@ -87,22 +87,25 @@ export class GameManager extends Component {
         }
     }
 
-    /**
-     * Updates the top message sprite based on the current stage progress.
-     */
-    public updateMessageSprite(stageIndex: number) {
-        if (!this.messageDisplaySprite || this.messageFrames.length === 0) return;
-        
-        let frameIndex = 0;
-        if (stageIndex === 0) frameIndex = 0; // M1
-        else if (stageIndex === 1 || stageIndex === 2) frameIndex = 1; // M2
-        else if (stageIndex >= 3) frameIndex = 2; // M3: Success/Win
-
-        if (this.messageFrames[frameIndex]) {
-            this.messageDisplaySprite.spriteFrame = this.messageFrames[frameIndex];
-        }
+/**
+ * Updates the top message sprite based on the current stage progress.
+ */
+public updateMessageSprite(stageIndex: number) {
+    if (!this.messageDisplaySprite || this.messageFrames.length === 0) return;
+    
+    let frameIndex = 0;
+    if (stageIndex === 0) {
+        frameIndex = 0; // M1: For the first drawing (Home)
+    } else if (stageIndex === 1 || stageIndex === 2) {
+        frameIndex = 1; // M2: For Star and Cat stages
+    } else if (stageIndex >= 3) {
+        frameIndex = 2; // M3: Success/Win
     }
 
+    if (this.messageFrames[frameIndex]) {
+        this.messageDisplaySprite.spriteFrame = this.messageFrames[frameIndex];
+    }
+}
     public startGame() {
         if (this._gameStarted) return;
         this._gameStarted = true;

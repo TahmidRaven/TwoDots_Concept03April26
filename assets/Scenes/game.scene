@@ -2729,7 +2729,7 @@
     "gridContainer": {
       "__id__": 118
     },
-    "enableClickRedirect": true,
+    "enableClickRedirect": false,
     "redirectOnSuccess": false,
     "redirectTapLimit": 6,
     "IosLink": "https://apps.apple.com/us/app/two-dots-connect-the-colors/id880178264",
@@ -3905,15 +3905,15 @@
     "outlineFrames": [],
     "filledAnimations": [
       {
-        "__uuid__": "79548ed3-9b2f-492c-b8fe-218148297f5e",
-        "__expectedType__": "cc.AnimationClip"
-      },
-      {
         "__uuid__": "03b41afc-65ed-4f80-8373-14cf4500d038",
         "__expectedType__": "cc.AnimationClip"
       },
       {
         "__uuid__": "a80838e1-3387-4044-be82-2d856bf7326e",
+        "__expectedType__": "cc.AnimationClip"
+      },
+      {
+        "__uuid__": "79548ed3-9b2f-492c-b8fe-218148297f5e",
         "__expectedType__": "cc.AnimationClip"
       }
     ],
@@ -4250,15 +4250,15 @@
     "playOnLoad": false,
     "_clips": [
       {
-        "__uuid__": "79548ed3-9b2f-492c-b8fe-218148297f5e",
-        "__expectedType__": "cc.AnimationClip"
-      },
-      {
         "__uuid__": "03b41afc-65ed-4f80-8373-14cf4500d038",
         "__expectedType__": "cc.AnimationClip"
       },
       {
         "__uuid__": "a80838e1-3387-4044-be82-2d856bf7326e",
+        "__expectedType__": "cc.AnimationClip"
+      },
+      {
+        "__uuid__": "79548ed3-9b2f-492c-b8fe-218148297f5e",
         "__expectedType__": "cc.AnimationClip"
       }
     ],
