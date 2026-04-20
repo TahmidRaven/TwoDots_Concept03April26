@@ -1689,7 +1689,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 72.99998474121094,
+      "width": 70.27998352050781,
       "height": 50.4
     },
     "_anchorPoint": {
@@ -1719,7 +1719,7 @@
       "b": 1,
       "a": 255
     },
-    "_string": "50s",
+    "_string": "59s",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 40,
@@ -2065,8 +2065,8 @@
     },
     "_lscale": {
       "__type__": "cc.Vec3",
-      "x": 0.35,
-      "y": 0.35,
+      "x": 0.6,
+      "y": 0.6,
       "z": 1
     },
     "_mobility": 0,
@@ -2572,15 +2572,15 @@
     },
     "messageFrames": [
       {
-        "__uuid__": "26d34e9b-1d7a-40cf-9ad3-b7a780a38041@f9941",
+        "__uuid__": "dfe5ba01-11ba-4798-bbc9-e214386879ef@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "46aea3f5-665d-4445-a80d-6081b10d79a4@f9941",
+        "__uuid__": "2d0a9c7d-db97-4088-983d-da718ddd5f25@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "593a5e85-6629-4bf8-9fdd-914a1c00914c@f9941",
+        "__uuid__": "47ae235c-3e0a-469e-8065-08aaf5f95533@f9941",
         "__expectedType__": "cc.SpriteFrame"
       }
     ],
@@ -2596,7 +2596,7 @@
       "__expectedType__": "cc.SpriteFrame"
     },
     "maxMoves": 15,
-    "startTimeSeconds": 50,
+    "startTimeSeconds": 59,
     "bgm": {
       "__id__": 166
     },
@@ -2730,7 +2730,7 @@
       "__id__": 118
     },
     "enableClickRedirect": false,
-    "redirectOnSuccess": false,
+    "redirectOnSuccess": true,
     "redirectTapLimit": 6,
     "IosLink": "https://apps.apple.com/us/app/two-dots-connect-the-colors/id880178264",
     "PlayStoreLink": "https://play.google.com/store/apps/details?id=com.weplaydots.twodotsandroid&hl=en&lang=en",

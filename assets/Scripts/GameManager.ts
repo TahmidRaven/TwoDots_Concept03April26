@@ -30,7 +30,7 @@ export class GameManager extends Component {
     @property(SpriteFrame) ctaLoseFrame: SpriteFrame = null!;
 
     @property(CCInteger) maxMoves: number = 15;
-    @property(CCInteger) startTimeSeconds: number = 59; 
+    @property(CCInteger) startTimeSeconds: number = 67; 
 
     @property(AudioContent) bgm: AudioContent = null!;
     @property(AudioContent) winSfx: AudioContent = null!;

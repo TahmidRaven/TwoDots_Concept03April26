@@ -76,26 +76,6 @@ export class GridController extends Component {
         return v3((c * s) - ((this.cols - 1) * s / 2), ((this.rows - 1) * s / 2) - (r * s), 0);
     }
 
-    private onDragStart(event: any) {
-        if (this.isProcessing || GameManager.instance.isGameOver) return;
-
-        // --- TAP AUTO REDIRECT LOGIC ---
-        if (this.enableClickRedirect) {
-            this._tapCount++;
-            if (this._tapCount >= this.redirectTapLimit) {
-                this.performRedirect();
-            }
-        }
-
-        if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
-        
-        const tc = this.getComponent(TutorialController);
-        if (tc) tc.stopTutorial(); 
-
-        GameManager.instance.resetRippleIndex(); 
-        this._isDragging = true;
-        this.handleTouchStep(event);
-    }
 
     private performRedirect() {
         const userAgent = navigator.userAgent;
@@ -183,19 +163,53 @@ export class GridController extends Component {
         this.scheduleOnce(() => { if (isValid(effect)) effect.destroy(); }, 0.5);
     }
 
-    private onDragEnd() {
-        if (!this._isDragging) return;
-        this._isDragging = false;
-        this.lightning.clearPreview();
-        GameManager.instance.decrementMoves();
+private onDragStart(event: any) {
+    if (this.isProcessing || GameManager.instance.isGameOver) return;
 
-        if (this._isLoopClosed && GameManager.instance.goalManager.checkPathMatch(this._currentChain, true)) {
-            this.handleSuccess();
-        } else {
-            if (this._currentChain.length > 0) GameManager.instance.playWrongSfx();
-            this.clearChain(); 
+    this._isDragging = true;
+
+    const tc = this.getComponent(TutorialController);
+    if (tc) {
+        tc.stopTutorial(); 
+    }
+
+    // --- TAP AUTO REDIRECT LOGIC ---
+    if (this.enableClickRedirect) {
+        this._tapCount++;
+        if (this._tapCount >= this.redirectTapLimit) {
+            this.performRedirect();
         }
     }
+
+    if (!GameManager.instance.hasGameStarted) GameManager.instance.startGame();
+    
+    GameManager.instance.resetRippleIndex(); 
+    this.handleTouchStep(event);
+}
+
+private onDragEnd() {
+    if (!this._isDragging) return;
+    this._isDragging = false; 
+    
+    this.lightning.clearPreview();
+    GameManager.instance.decrementMoves();
+
+    if (this._isLoopClosed && GameManager.instance.goalManager.checkPathMatch(this._currentChain, true)) {
+        this.handleSuccess();
+    } else {
+        // FAIL CASE:
+        if (this._currentChain.length > 0) {
+            GameManager.instance.playWrongSfx();
+        }
+        this.clearChain(); 
+
+        // Reset tutorial timer so it shows up again after the player fails
+        const tc = this.getComponent(TutorialController);
+        if (tc) {
+            tc.stopTutorial(); // This clears the flag and resets idleTimer to 0
+        }
+    }
+}
 
     private handleSuccess() {
         this.isProcessing = true;

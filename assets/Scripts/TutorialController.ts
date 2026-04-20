@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Vec3, v3, Vec2, tween, Tween, CCFloat } from 'cc';
+import { _decorator, Component, Node, Vec3, v3, Vec2, tween, Tween, CCFloat, isValid } from 'cc';
 import { GridController } from './GridController';
 import { GameManager } from './GameManager';
 import { TutorialHand } from './TutorialHand';
@@ -20,20 +20,21 @@ export class TutorialController extends Component {
     update(dt: number) {
         if (!GameManager.instance || !GameManager.instance.goalManager) return;
         
-        // Reset if stage changes
         const currentStage = GameManager.instance.goalManager.currentStage;
         if (currentStage !== this._lastCheckedStage) {
             this._lastCheckedStage = currentStage;
             this.stopTutorial(); 
         }
 
-        // KILL IMMEDIATELY if player touches the grid
+        // HEAVY-HANDED CHECK: If player is touching or board is moving, hand MUST be gone
         if (this.grid && (this.grid.isDragging || this.grid.isProcessing)) {
-            if (this._isShowingTutorial) this.stopTutorial();
+            if (this._isShowingTutorial || (this.hand && this.hand.node.active)) {
+                this.stopTutorial();
+            }
+            this._idleTimer = 0; 
             return;
         }
 
-        // Timer logic for the 0.25s break
         if (!this._isShowingTutorial) {
             this._idleTimer += dt;
             if (this._idleTimer >= this.idleThreshold) {
@@ -43,18 +44,30 @@ export class TutorialController extends Component {
     }
 
     public stopTutorial() {
-        this._idleTimer = 0; 
         this._isShowingTutorial = false;
+        this._idleTimer = 0; 
+
         if (this._tutorialTween) {
             this._tutorialTween.stop();
             this._tutorialTween = null;
         }
-        if (this.hand) this.hand.hide();
-        if (this.grid && this.grid.lightning) this.grid.lightning.clearWeb();
+
+        // Kill any tweens directly on the hand node just in case
+        if (this.hand && this.hand.node) {
+            tween(this.hand.node).stop();
+            this.hand.hide();
+        }
+
+        if (this.grid && this.grid.lightning) {
+            this.grid.lightning.clearWeb();
+            this.grid.lightning.clearPreview();
+        }
     }
 
     public playFullSuggestion() {
         const gm = GameManager.instance.goalManager;
+        if (!gm) return;
+        
         const path = gm.getPathForCurrentStage();
         if (path.length < 2) return;
 
@@ -69,28 +82,25 @@ export class TutorialController extends Component {
 
         this._tutorialTween = tween(this.node);
         
-        // Loop through the path coordinates
         for (let i = 1; i < path.length; i++) {
-            this.addTweenSegment(path[i-1], path[i], colorHex);
+            this.addTweenSegment(path[i-1], path[path.length > i ? i : 0], path[i], colorHex);
         }
-        // Close the shape loop
-        this.addTweenSegment(path[path.length - 1], path[0], colorHex);
+        this.addTweenSegment(path[path.length - 1], path[0], path[0], colorHex);
 
-        // Sequence end: Clear and set flag to false to trigger the 0.25s idle timer
         this._tutorialTween.delay(0.1).call(() => {
             if (this.grid && this.grid.lightning) this.grid.lightning.clearWeb();
             this._isShowingTutorial = false; 
         }).start();
     }
 
-    private addTweenSegment(startCoord: Vec2, endCoord: Vec2, colorHex: string) {
+    private addTweenSegment(startCoord: Vec2, currentCoord: Vec2, endCoord: Vec2, colorHex: string) {
         const prevPos = this.grid.getPosOfCell(startCoord.x, startCoord.y);
         const targetPos = this.grid.getPosOfCell(endCoord.x, endCoord.y);
 
         this._tutorialTween = this._tutorialTween!.to(this.drawSpeed, {}, {
             onUpdate: (target: Node, ratio: number) => {
-                // Secondary safety check for instant removal on interaction
-                if (this.grid.isDragging) {
+                // If player interacts mid-tween, stop everything immediately
+                if (this.grid.isDragging || this.grid.isProcessing) {
                     this.stopTutorial();
                     return;
                 }
@@ -103,7 +113,7 @@ export class TutorialController extends Component {
                 }
             },
             onComplete: () => {
-                if (this.grid.lightning && this._isShowingTutorial) {
+                if (this.grid && this.grid.lightning && this._isShowingTutorial) {
                     this.grid.lightning.addBolt(prevPos, targetPos, colorHex);
                     this.grid.lightning.clearPreview();
                 }
