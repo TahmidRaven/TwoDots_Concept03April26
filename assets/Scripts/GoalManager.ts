@@ -10,19 +10,19 @@ export class GoalManager extends Component {
     @property([SpriteFrame]) outlineFrames: Array<SpriteFrame> = [];
     @property([AnimationClip]) filledAnimations: Array<AnimationClip> = [];
 
-    // DATA ORDER: 0 = Home (Red), 1 = Star (Yellow), 2 = Cat (Blue)
-    private readonly stageColors: string[] = ["red", "yellow", "blue"];
+    // DATA ORDER UPDATED: 0 = Cat (Blue), 1 = Home (Red), 2 = Star (Yellow)
+    private readonly stageColors: string[] = ["blue", "red", "yellow"];
     private _currentStage: number = 0;
 
     private readonly stagePaths: Vec2[][] = [
-        [ // Index 0: Home (Red)
+        [ // Index 0: Cat (Blue)
+            v2(1, 1), v2(2, 1), v2(3, 1), v2(4, 1), v2(5, 1), v2(6, 1), v2(7,2), v2(7, 3), v2(7, 4), v2(7, 5), v2(7, 6), v2(6,7), v2(5, 7), v2(4, 7), v2(3, 7), v2(2, 7), v2(1, 7), v2(2, 6), v2(3, 5), v2(3, 4), v2(3, 3), v2(2, 2)
+        ],
+        [ // Index 1: Home (Red)
             v2(1,4), v2(2,3), v2(3,2), v2(4,1), v2(5,1), v2(6,1), v2(7,1), v2(7,2), v2(7,3), v2(7,4), v2(7,5), v2(7,6), v2(7,7), v2(6,7), v2(5,7), v2(4,7), v2(3,6), v2(2,5)
         ],
-        [ // Index 1: Star (Yellow)
+        [ // Index 2: Star (Yellow)
             v2(1,4), v2(3,5), v2(3,6), v2(3,7), v2(4,6), v2(5,5), v2(7,6), v2(6,4), v2(7,2), v2(5,3), v2(4,2), v2(3,1), v2(3,2), v2(3,3)
-        ],
-        [ // Index 2: Cat (Blue)
-            v2(1, 1), v2(2, 1), v2(3, 1), v2(4, 1), v2(5, 1), v2(6, 1), v2(7,2), v2(7, 3), v2(7, 4), v2(7, 5), v2(7, 6), v2(6,7), v2(5, 7), v2(4, 7), v2(3, 7), v2(2, 7), v2(1, 7), v2(2, 6), v2(3, 5), v2(3, 4), v2(3, 3), v2(2, 2)
         ]
     ];
 
@@ -34,9 +34,6 @@ export class GoalManager extends Component {
         this.updateStageVisuals();
     }
 
-    /**
-     * Synchronizes the outline sprite with the current stage index
-     */
     public updateStageVisuals() {
         if (this._currentStage < this.outlineFrames.length) {
             this.outlineSprite.spriteFrame = this.outlineFrames[this._currentStage];
@@ -48,12 +45,7 @@ export class GoalManager extends Component {
         }
     }
 
-    /**
-     * Plays the success animation for the current stage.
-     * It uses the AnimationClip found at the same index as the stage data.
-     */
     public revealCurrentDrawing() {
-        // Validation check: ensures we have a clip for this stage index
         const targetClip = this.filledAnimations[this._currentStage];
         
         if (!targetClip || !this.charAnimation) {
@@ -67,7 +59,6 @@ export class GoalManager extends Component {
         this.charAnimation.node.active = true;
         this.charAnimation.node.setScale(v3(0, 0, 1));
 
-        // Use the actual clip object to play, rather than just a string name
         const state = this.charAnimation.getState(targetClip.name) || this.charAnimation.addClip(targetClip);
         this.charAnimation.play(targetClip.name);
 
