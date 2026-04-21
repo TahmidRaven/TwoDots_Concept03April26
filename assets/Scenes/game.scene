@@ -3863,6 +3863,7 @@
     "drawSpeed": 0.125,
     "idleThreshold": 0.25,
     "showAllTime": false,
+    "showShapeDuration": 2.25,
     "_id": "7bpf755QxEgb6ulAGjjSoM"
   },
   {

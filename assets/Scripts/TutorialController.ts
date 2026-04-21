@@ -15,6 +15,13 @@ export class TutorialController extends Component {
     @property({ type: CCBoolean, tooltip: "If true, draws the lightning path every time. If false, draws once then only shows hand tap." })
     public showAllTime: boolean = true;
 
+    @property({ 
+        type: CCFloat, 
+        tooltip: "How long the completed shape stays visible (only used when showAllTime is false)",
+        visible: function(this: TutorialController) { return !this.showAllTime; } 
+    })
+    public showShapeDuration: number = 1.0;
+
     private _idleTimer: number = 0;
     private _isShowingTutorial: boolean = false;
     private _tutorialTween: Tween<Node> | null = null;
@@ -22,7 +29,7 @@ export class TutorialController extends Component {
     private _hasDrawnCurrentPath: boolean = false;
 
     onLoad() {
-        // Set the timer to the threshold immediately so it plays on the first update
+        // Start with the timer at threshold to trigger tutorial quickly on first load
         this._idleTimer = this.idleThreshold;
     }
 
@@ -33,11 +40,11 @@ export class TutorialController extends Component {
         if (currentStage !== this._lastCheckedStage) {
             this._lastCheckedStage = currentStage;
             this._hasDrawnCurrentPath = false; 
-            // When moving to a new stage, we also want the tutorial to show immediately
             this._idleTimer = this.idleThreshold;
             this.stopTutorial(); 
         }
 
+        // If player is interacting or grid is moving, kill the tutorial
         if (this.grid && (this.grid.isDragging || this.grid.isProcessing)) {
             if (this._isShowingTutorial || (this.hand && this.hand.node.active)) {
                 this.stopTutorial();
@@ -81,6 +88,7 @@ export class TutorialController extends Component {
         const path = gm.getPathForCurrentStage();
         if (path.length < 2) return;
 
+        // Draw full path if "showAllTime" is true OR if we haven't drawn this stage's path yet
         if (this.showAllTime || !this._hasDrawnCurrentPath) {
             this.playFullSuggestion(path);
         } else {
@@ -107,15 +115,26 @@ export class TutorialController extends Component {
 
         this._tutorialTween = tween(this.node);
         
+        // Build the drawing path
         for (let i = 1; i < path.length; i++) {
             this.addTweenSegment(path[i-1], path[i], colorHex);
         }
+        // Close the loop
         this.addTweenSegment(path[path.length - 1], path[0], colorHex);
 
-        this._tutorialTween.delay(0.1).call(() => {
-            if (this.grid && this.grid.lightning) this.grid.lightning.clearWeb();
+        // Conditional delay: keep the lines visible before clearing
+        if (!this.showAllTime) {
+            this._tutorialTween.delay(this.showShapeDuration);
+        }
+
+        this._tutorialTween.call(() => {
+            if (this.grid && this.grid.lightning) {
+                this.grid.lightning.clearWeb();
+            }
+            this.hand.hide(); 
             this._isShowingTutorial = false; 
             this._hasDrawnCurrentPath = true; 
+            this._idleTimer = 0; // Reset idle timer after the hold duration finishes
         }).start();
     }
 
