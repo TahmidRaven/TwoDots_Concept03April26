@@ -96,10 +96,10 @@ public updateMessageSprite(stageIndex: number) {
     let frameIndex = 0;
     if (stageIndex === 0) {
         frameIndex = 0; // M1: For the first drawing (Home)
-    } else if (stageIndex === 1 || stageIndex === 2) {
+    } else if (stageIndex === 1 ) {
         frameIndex = 1; // M2: For Star and Cat stages
-    } else if (stageIndex >= 3) {
-        frameIndex = 2; // M3: Success/Win
+    } else if (stageIndex >= 2) {
+        frameIndex = 2; // M3: STAR
     }
 
     if (this.messageFrames[frameIndex]) {

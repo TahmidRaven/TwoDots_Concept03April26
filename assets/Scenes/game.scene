@@ -2572,15 +2572,15 @@
     },
     "messageFrames": [
       {
+        "__uuid__": "47ae235c-3e0a-469e-8065-08aaf5f95533@f9941",
+        "__expectedType__": "cc.SpriteFrame"
+      },
+      {
         "__uuid__": "dfe5ba01-11ba-4798-bbc9-e214386879ef@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
         "__uuid__": "2d0a9c7d-db97-4088-983d-da718ddd5f25@f9941",
-        "__expectedType__": "cc.SpriteFrame"
-      },
-      {
-        "__uuid__": "47ae235c-3e0a-469e-8065-08aaf5f95533@f9941",
         "__expectedType__": "cc.SpriteFrame"
       }
     ],
@@ -2730,7 +2730,7 @@
       "__id__": 118
     },
     "enableClickRedirect": false,
-    "redirectOnSuccess": true,
+    "redirectOnSuccess": false,
     "redirectTapLimit": 6,
     "IosLink": "https://apps.apple.com/us/app/two-dots-connect-the-colors/id880178264",
     "PlayStoreLink": "https://play.google.com/store/apps/details?id=com.weplaydots.twodotsandroid&hl=en&lang=en",
